@@ -1,20 +1,24 @@
 {
   "name": "taptop-extensions",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "description": "",
+  "version": "0.1.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fforzamax/taptop-extensions.git"
   },
   "keywords": [],
-  "author": "",
+  "author": "Maxim fforzamax@gmail.com",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/fforzamax/taptop-extensions/issues"
+  "type": "module",
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "husky": "^9.1.7",
+    "rollup": "^4.42.0",
+    "typescript": "^5.8.3"
   },
-  "homepage": "https://github.com/fforzamax/taptop-extensions#readme",
-  "description": ""
+  "scripts": {
+    "prepare": "husky",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
 }
