@@ -4,7 +4,7 @@ export interface GeneratorConfig {
 }
 
 export interface GeneratorElements {
-  [key: string]: HTMLElement | NodeListOf<HTMLElement> | null;
+  [key: string]: HTMLElement | null;
 }
 
 export abstract class BaseGenerator extends HTMLElement {
@@ -36,6 +36,8 @@ export abstract class BaseGenerator extends HTMLElement {
   protected init(): void {
     this.render();
     this.findElements();
+    this.setInitialState();
+    this.bindEvents();
   }
 
   protected render(): void {
@@ -56,8 +58,8 @@ export abstract class BaseGenerator extends HTMLElement {
     //сюда кнопку генерации
     //сюды элементы модалки
     //сюды всё базовое короче
-    this.elements.genBtn = this.shadow.querySelector('.gen-btn');
-    this.elements.codeOutput = this.shadow.querySelector('.code-output');
+    this.elements.genBtn = this.shadow.querySelector<HTMLElement>('.gen-btn');
+    this.elements.codeOutput = this.shadow.querySelector<HTMLElement>('.code-output');
     /*this.elements.generateButton = this.shadow.querySelector('.generate-button');
     this.elements.modal = this.shadow.querySelector('.modal');
     this.elements.modalCloseButtons = this.shadow.querySelectorAll('.modal-close');
@@ -145,7 +147,7 @@ export abstract class BaseGenerator extends HTMLElement {
   // Отвязываем обработчики
   protected unbindEvents(): void {
     if (this.elements.genBtn && this.eventHandlers.has('generate')) {
-      this.elements.genBtn.removeEventListener('click', this.eventHandlers.get('generate'));
+      this.elements.genBtn.removeEventListener('click', this.eventHandlers.get('generate')!);
     }
 
     this.eventHandlers.clear();
