@@ -3,7 +3,7 @@
 export const styles = `
 :host {
   display: block;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   border: 1px solid #ddd;
   padding: 20px;
   border-radius: 8px;

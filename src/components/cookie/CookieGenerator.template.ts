@@ -2,28 +2,16 @@
 
 export const template = `
 <div class="generator-form">
-  <div class="form-group">
-    <label for="expiry-days">Срок хранения (дней)</label>
-    <input type="number" id="expiry-days" class="form-control">
-  </div>
-  <div class="form-group">
-    <label for="popup-class">Класс Pop-up виджета</label>
-    <input type="text" id="popup-class" class="form-control">
-  </div>
-  <div class="form-group">
-    <label for="consent-btn-class">Класс кнопки «Принять»</label>
-    <input type="text" id="consent-btn-class" class="form-control">
-  </div>
-  <div class="form-group">
-    <label for="reject-btn-class">Класс кнопки «Отклонить»</label>
-    <input type="text" id="reject-btn-class" class="form-control">
-  </div>
+  <ttg-input id="expiry-days" label="Срок хранения (дней)" type="number" required></ttg-input>
+  <ttg-input id="popup-class" label="Класс Pop-up виджета" type="text"></ttg-input>
+  <ttg-input id="consent-btn-class" label="Класс кнопки «Принять»" type="text"></ttg-input>
+  <ttg-input id="reject-btn-class" label="Класс кнопки «Отклонить»" type="text"></ttg-input>
 </div>
 
 <button class="gen-btn">Сгенерировать и скопировать код</button>
 
 <div class="output-area">
     <h3>Сгенерированный код:</h3>
-    <pre><code class="code-output">Нажмите кнопку, чтобы сгенерировать код...</code></pre>
+    <pre><code class="code-output">...</code></pre>
 </div>
 `;

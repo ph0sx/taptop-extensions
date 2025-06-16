@@ -20,6 +20,8 @@ export abstract class BaseGenerator extends HTMLElement {
     this.shadow = this.attachShadow({ mode: 'open' }); //Создает ссылку на экземпляр ShadowRoot для элемента
   }
 
+  /* МЕТОДЫ ЖИЗНЕННОГО ЦИКЛА ВЕБ-КОМПОНЕНТА */
+
   //LIFECYCLE: Вызывается когда кастомный элемент вставляется в DOM
   connectedCallback(): void {
     if (!this.initialized) {
@@ -111,6 +113,7 @@ export abstract class BaseGenerator extends HTMLElement {
     }
   }
 
+  //TODO: Минификацию и клипбоард вынести в утилиты?
   protected minifyCode(code: string): string {
     return code
       .replace(/\/\*[\s\S]*?\*\//g, '')

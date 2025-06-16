@@ -21,7 +21,7 @@ export const variables = `
     --ttg-color-text-gray-300: #D5D5D5;
     --ttg-color-text-white: #FFFFFF;
     --ttg-color-text-blue-base: #3290FF;
-    --ttg-color-text-critical: #D056CC;
+    --ttg-color-text-critical: #FF2B71;
     
     /* Background colors */
     --ttg-color-bg-black: #333333;
@@ -41,6 +41,6 @@ export const variables = `
     --ttg-color-stroke-black: #333333;
     --ttg-color-stroke-gray-300: #D5D5D5;
     --ttg-color-stroke-blue-base: #3290FF;
-    --ttg-color-stroke-critical: #D056CC;
+    --ttg-color-stroke-critical: #FF2B71;
   }
 `;

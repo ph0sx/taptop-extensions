@@ -1,13 +1,15 @@
+import type { Input } from '../../ui/Input/Input';
+import '../../ui/Input/Input';
 import type { GeneratorConfig, GeneratorElements } from '../base/BaseGenerator';
 import { BaseGenerator } from '../base/BaseGenerator';
 import { styles } from './CookieGenerator.styles';
 import { template } from './CookieGenerator.template';
 
 interface CookieGeneratorElements extends GeneratorElements {
-  expiryDays: HTMLInputElement | null;
-  popupClass: HTMLInputElement | null;
-  consentBtnClass: HTMLInputElement | null;
-  rejectBtnClass: HTMLInputElement | null;
+  expiryDays: Input | null;
+  popupClass: Input | null;
+  consentBtnClass: Input | null;
+  rejectBtnClass: Input | null;
 }
 
 export default class CookieGenerator extends BaseGenerator {
@@ -36,11 +38,10 @@ export default class CookieGenerator extends BaseGenerator {
 
   protected findElements(): void {
     super.findElements();
-    this.elements.expiryDays = this.shadow.querySelector<HTMLInputElement>('.expiry-days');
-    this.elements.popupClass = this.shadow.querySelector<HTMLInputElement>('.popup-class');
-    this.elements.consentBtnClass =
-      this.shadow.querySelector<HTMLInputElement>('.consent-btn-class');
-    this.elements.rejectBtnClass = this.shadow.querySelector<HTMLInputElement>('.reject-btn-class');
+    this.elements.expiryDays = this.shadow.querySelector<Input>('#expiry-days');
+    this.elements.popupClass = this.shadow.querySelector<Input>('#popup-class');
+    this.elements.consentBtnClass = this.shadow.querySelector<Input>('#consent-btn-class');
+    this.elements.rejectBtnClass = this.shadow.querySelector<Input>('#reject-btn-class');
   }
 
   protected setInitialState(): void {
