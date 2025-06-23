@@ -1,5 +1,7 @@
 import type { Input } from '../../ui/Input/Input';
 import '../../ui/Input/Input';
+import '../../ui/Generator/Generator';
+import '../../ui/GeneratorSection/GeneratorSection';
 import type { GeneratorConfig, GeneratorElements } from '../base/BaseGenerator';
 import { BaseGenerator } from '../base/BaseGenerator';
 import { styles } from './CookieGenerator.styles';
