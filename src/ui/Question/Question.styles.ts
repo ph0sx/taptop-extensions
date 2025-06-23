@@ -44,7 +44,7 @@ export const styles = `
 
   /* Позиционирование относительно контейнера */
   position: absolute;
-  z-index: 1;
+  z-index: 9999;
   bottom: 6.5px;
   right: -14px;
   transform: translateY(-50%);

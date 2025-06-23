@@ -1,4 +1,5 @@
 export const styles = `
+
 * {
   box-sizing: border-box;
 }
@@ -20,6 +21,11 @@ export const styles = `
   display: flex;
   align-items: center;
   gap: 4px;
+  color: var(--grey-900, #666);
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: -0.28px;
 }
 
 /* REQUIRED ICON */
