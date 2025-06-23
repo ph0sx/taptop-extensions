@@ -33,7 +33,7 @@ export const variables = `
     --ttg-color-bg-white: #FFFFFF;
     --ttg-color-bg-blue-base: #3290FF;
     --ttg-color-bg-blue-dark: #137BEC;
-    --ttg-color-bg-blue-darker: #04602A;
+    --ttg-color-bg-blue-darker: #0A60C2;
     --ttg-color-bg-blue-light: #073DFE;
     --ttg-color-bg-blue-lighter: #E9F3FF;
     
