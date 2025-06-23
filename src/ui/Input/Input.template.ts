@@ -3,7 +3,7 @@ export const template = `
         <label>
           <span class="ttg-input-label">Вставьте URL изображения «до»</span>
           <span class="ttg-input-required">*</span>
-          <ttg-question tooltip-text="Ваша подсказка здесь"></ttg-question>
+          <ttg-question tooltip="" style="display: none; height: 16px;"></ttg-question>
         </label>
         <div class="ttg-input-field">
           <input

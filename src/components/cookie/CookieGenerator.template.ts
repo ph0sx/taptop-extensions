@@ -2,8 +2,8 @@
 
 export const template = `
 <div class="generator-form">
-  <ttg-input id="expiry-days" label="Срок хранения (дней)" type="number" required></ttg-input>
-  <ttg-input id="popup-class" label="Класс Pop-up виджета" type="text"></ttg-input>
+  <ttg-input id="expiry-days" tooltip="По умолчанию 30 дней" label="Срок хранения (дней)" type="number" required></ttg-input>
+  <ttg-input id="popup-class" tooltip="По умолчанию ttg-cookie-popup" label="Класс Pop-up виджета" type="text"></ttg-input>
   <ttg-input id="consent-btn-class" label="Класс кнопки «Принять»" type="text"></ttg-input>
   <ttg-input id="reject-btn-class" label="Класс кнопки «Отклонить»" type="text"></ttg-input>
 </div>

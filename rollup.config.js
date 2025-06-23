@@ -7,5 +7,5 @@ export default {
     file: 'dist/index.js',
     format: 'iife',
   },
-  plugins: [terser(), typescript()],
+  plugins: [typescript(), terser()],
 };

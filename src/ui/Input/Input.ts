@@ -1,5 +1,7 @@
 import { styles } from './Input.styles';
 import { template } from './Input.template';
+import '../Question/Question';
+import { generateUniqueId } from '../../utils/id';
 
 interface InputElements {
   wrapper: HTMLElement | null;
@@ -18,9 +20,10 @@ export class Input extends HTMLElement {
 
   private touched = false;
   private userStartedTyping = false;
+  private uniqueId = generateUniqueId('ttg-input');
 
   static get observedAttributes() {
-    return ['label', 'value', 'type', 'error', 'disabled', 'placeholder', 'required'];
+    return ['label', 'value', 'type', 'error', 'disabled', 'placeholder', 'required', 'tooltip'];
   }
 
   constructor() {
@@ -29,9 +32,17 @@ export class Input extends HTMLElement {
     this.shadowRoot!.innerHTML = `<style>${styles}</style>${template}`;
 
     this.elements.wrapper = this.shadowRoot!.querySelector('.ttg-input-wrapper');
-    this.elements.label = this.shadowRoot!.querySelector('.ttg-input-label');
+    this.elements.label = this.shadowRoot!.querySelector('label');
     this.elements.input = this.shadowRoot!.querySelector('.ttg-input-control');
     this.elements.errorMessage = this.shadowRoot!.querySelector('.ttg-input-error-text');
+
+    // Устанавливаем связь между label и input
+    if (this.elements.input) {
+      this.elements.input.id = this.uniqueId;
+    }
+    if (this.elements.label) {
+      this.elements.label.setAttribute('for', this.uniqueId);
+    }
   }
 
   get value() {
@@ -110,15 +121,19 @@ export class Input extends HTMLElement {
         setTimeout(() => this.validate(), 300);
       }
     });
+
+    this.updateTooltip();
   }
 
   attributeChangedCallback(name: string, oldValue: string, newValue: string) {
     switch (name) {
-      case 'label':
-        if (this.elements.label) {
-          this.elements.label.textContent = newValue;
+      case 'label': {
+        const labelSpan = this.shadowRoot?.querySelector('.ttg-input-label');
+        if (labelSpan) {
+          labelSpan.textContent = newValue;
         }
         break;
+      }
 
       case 'value':
         if (this.elements.input) {
@@ -165,6 +180,10 @@ export class Input extends HTMLElement {
       case 'required':
         this.updateRequiredIndicator();
         break;
+
+      case 'tooltip':
+        this.updateTooltip();
+        break;
     }
   }
 
@@ -172,6 +191,19 @@ export class Input extends HTMLElement {
     const requiredSpan = this.shadowRoot?.querySelector('.ttg-input-required') as HTMLElement;
     if (requiredSpan) {
       requiredSpan.style.display = this.hasAttribute('required') ? 'inline' : 'none';
+    }
+  }
+
+  private updateTooltip() {
+    const questionElement = this.shadowRoot?.querySelector('ttg-question') as HTMLElement;
+    if (questionElement) {
+      const tooltipValue = this.getAttribute('tooltip');
+      if (tooltipValue) {
+        questionElement.style.display = 'block';
+        questionElement.setAttribute('tooltip', tooltipValue);
+      } else {
+        questionElement.style.display = 'none';
+      }
     }
   }
 }
