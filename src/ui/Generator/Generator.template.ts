@@ -13,7 +13,7 @@ export const template = `
   
   <!-- Generate Button -->
   <div class="ttg-generator-button-container">
-    <ttg-button >Сгенерировать код</ttg-button>
+    <ttg-button>Сгенерировать код</ttg-button>
   </div>
 </div>
 `;

@@ -32,7 +32,7 @@ export class Generator extends HTMLElement {
     this.elements.header = this.shadowRoot!.querySelector('.ttg-generator-header');
     this.elements.title = this.shadowRoot!.querySelector('.ttg-generator-title');
     this.elements.sectionsContainer = this.shadowRoot!.querySelector('.ttg-generator-sections');
-    this.elements.generateButton = this.shadowRoot!.querySelector('.ttg-generator-button');
+    this.elements.generateButton = this.shadowRoot!.querySelector('ttg-button');
   }
 
   get title(): string {

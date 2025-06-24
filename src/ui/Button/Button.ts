@@ -23,11 +23,13 @@ export class Button extends HTMLElement {
 
   connectedCallback() {
     this.render();
+    this.updateIdForPrimary();
   }
 
   attributeChangedCallback(name: string) {
     if (name === 'variant' && this.shadow) {
       this.updateVariant();
+      this.updateIdForPrimary();
     }
   }
 
@@ -52,6 +54,14 @@ export class Button extends HTMLElement {
       );
       // Add current variant class
       button.classList.add(`ttg-button--${this.variant}`);
+    }
+  }
+
+  private updateIdForPrimary() {
+    if (this.variant === 'primary') {
+      this.id = 'gen-btn';
+    } else {
+      this.removeAttribute('id');
     }
   }
 }

@@ -60,8 +60,9 @@ export abstract class BaseGenerator extends HTMLElement {
     //сюда кнопку генерации
     //сюды элементы модалки
     //сюды всё базовое короче
-    this.elements.genBtn = this.shadow.querySelector<HTMLElement>('.gen-btn');
-    this.elements.codeOutput = this.shadow.querySelector<HTMLElement>('.code-output');
+    this.elements.genBtn = this.shadow.querySelector<HTMLElement>('#gen-btn');
+    this.elements.generator = this.shadow.querySelector<HTMLElement>('ttg-generator');
+    this.elements.codeOutput = this.shadow.querySelector<HTMLElement>('#code-output');
     /*this.elements.generateButton = this.shadow.querySelector('.generate-button');
     this.elements.modal = this.shadow.querySelector('.modal');
     this.elements.modalCloseButtons = this.shadow.querySelectorAll('.modal-close');
@@ -70,10 +71,17 @@ export abstract class BaseGenerator extends HTMLElement {
 
   //Навешиваем обработчики
   protected bindEvents(): void {
-    //Обрабочик для кнопки генерации
-    if (this.elements.genBtn) {
+    //Обрабочик для кнопки генерации через ttg-generator событие
+    if (this.elements.generator) {
       const handler = () => this.generateAndCopyCode();
       this.eventHandlers.set('generate', handler);
+      this.elements.generator.addEventListener('generate', handler);
+    }
+
+    //Обрабочик для кнопки генерации напрямую (fallback)
+    if (this.elements.genBtn) {
+      const handler = () => this.generateAndCopyCode();
+      this.eventHandlers.set('generate-direct', handler);
       this.elements.genBtn.addEventListener('click', handler);
     }
   }
@@ -149,8 +157,12 @@ export abstract class BaseGenerator extends HTMLElement {
 
   // Отвязываем обработчики
   protected unbindEvents(): void {
-    if (this.elements.genBtn && this.eventHandlers.has('generate')) {
-      this.elements.genBtn.removeEventListener('click', this.eventHandlers.get('generate')!);
+    if (this.elements.generator && this.eventHandlers.has('generate')) {
+      this.elements.generator.removeEventListener('generate', this.eventHandlers.get('generate')!);
+    }
+
+    if (this.elements.genBtn && this.eventHandlers.has('generate-direct')) {
+      this.elements.genBtn.removeEventListener('click', this.eventHandlers.get('generate-direct')!);
     }
 
     this.eventHandlers.clear();
