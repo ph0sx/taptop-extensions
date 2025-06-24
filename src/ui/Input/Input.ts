@@ -23,7 +23,18 @@ export class Input extends HTMLElement {
   private uniqueId = generateUniqueId('ttg-input');
 
   static get observedAttributes() {
-    return ['label', 'value', 'type', 'error', 'disabled', 'placeholder', 'required', 'tooltip'];
+    return [
+      'label',
+      'value',
+      'type',
+      'error',
+      'disabled',
+      'placeholder',
+      'required',
+      'tooltip',
+      'min',
+      'max',
+    ];
   }
 
   constructor() {
@@ -87,6 +98,27 @@ export class Input extends HTMLElement {
       return false;
     }
 
+    // Validate min/max for number inputs
+    if (this.elements.input?.type === 'number' && value) {
+      const numValue = parseFloat(value);
+
+      if (this.hasAttribute('min')) {
+        const minValue = parseFloat(this.getAttribute('min')!);
+        if (numValue < minValue) {
+          this.setError(`Значение должно быть не менее ${minValue}`);
+          return false;
+        }
+      }
+
+      if (this.hasAttribute('max')) {
+        const maxValue = parseFloat(this.getAttribute('max')!);
+        if (numValue > maxValue) {
+          this.setError(`Значение должно быть не более ${maxValue}`);
+          return false;
+        }
+      }
+    }
+
     this.clearError();
     return true;
   }
@@ -125,7 +157,7 @@ export class Input extends HTMLElement {
     this.updateTooltip();
   }
 
-  attributeChangedCallback(name: string, oldValue: string, newValue: string) {
+  attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
     switch (name) {
       case 'label': {
         const labelSpan = this.shadowRoot?.querySelector('.ttg-input-label');
@@ -183,6 +215,26 @@ export class Input extends HTMLElement {
 
       case 'tooltip':
         this.updateTooltip();
+        break;
+
+      case 'min':
+        if (this.elements.input) {
+          if (newValue) {
+            this.elements.input.setAttribute('min', newValue);
+          } else {
+            this.elements.input.removeAttribute('min');
+          }
+        }
+        break;
+
+      case 'max':
+        if (this.elements.input) {
+          if (newValue) {
+            this.elements.input.setAttribute('max', newValue);
+          } else {
+            this.elements.input.removeAttribute('max');
+          }
+        }
         break;
     }
   }
