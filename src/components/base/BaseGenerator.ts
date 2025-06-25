@@ -1,3 +1,5 @@
+import baseStyles from '../../styles/base.css';
+
 export interface GeneratorConfig {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
@@ -46,7 +48,7 @@ export abstract class BaseGenerator extends HTMLElement {
     const styles = this.getStyles();
     const template = this.getTemplate();
     this.shadow.innerHTML = `
-    <style>${styles}</style>
+    <style>${baseStyles}${styles}</style>
     ${template}
     `;
   }
@@ -63,6 +65,12 @@ export abstract class BaseGenerator extends HTMLElement {
     this.elements.genBtn = this.shadow.querySelector<HTMLElement>('#gen-btn');
     this.elements.generator = this.shadow.querySelector<HTMLElement>('ttg-generator');
     this.elements.codeOutput = this.shadow.querySelector<HTMLElement>('#code-output');
+
+    // Ищем внешний попап успеха
+    this.elements.successPopup = document.querySelector<HTMLElement>('.pop-up-success');
+    this.elements.popupAcceptBtn = document.querySelector<HTMLElement>('[data-popup-accept-btn]');
+    this.elements.popupCloseBtn = document.querySelector<HTMLElement>('[data-popup-close-btn]');
+
     /*this.elements.generateButton = this.shadow.querySelector('.generate-button');
     this.elements.modal = this.shadow.querySelector('.modal');
     this.elements.modalCloseButtons = this.shadow.querySelectorAll('.modal-close');
@@ -84,6 +92,30 @@ export abstract class BaseGenerator extends HTMLElement {
       this.eventHandlers.set('generate-direct', handler);
       this.elements.genBtn.addEventListener('click', handler);
     }
+
+    // Обработчики для попапа успеха
+    if (this.elements.popupAcceptBtn) {
+      const handler = () => this.hideSuccessPopup();
+      this.eventHandlers.set('popup-accept', handler);
+      this.elements.popupAcceptBtn.addEventListener('click', handler);
+    }
+
+    if (this.elements.popupCloseBtn) {
+      const handler = () => this.hideSuccessPopup();
+      this.eventHandlers.set('popup-close', handler);
+      this.elements.popupCloseBtn.addEventListener('click', handler);
+    }
+
+    // Обработчик клика за пределы попапа
+    if (this.elements.successPopup) {
+      const handler = (event: Event) => {
+        if (event.target === this.elements.successPopup) {
+          this.hideSuccessPopup();
+        }
+      };
+      this.eventHandlers.set('popup-overlay', handler);
+      this.elements.successPopup.addEventListener('click', handler);
+    }
   }
 
   // Устанавливает начальное состояние для элементов. Должно быть переопределено
@@ -101,6 +133,7 @@ export abstract class BaseGenerator extends HTMLElement {
       }
 
       await this.copyToClipboard(code);
+      this.showSuccessPopup();
     } catch (error) {
       console.error('Ошибка генерации кода: ', error);
     }
@@ -110,7 +143,7 @@ export abstract class BaseGenerator extends HTMLElement {
   protected abstract generateCode(settings: GeneratorConfig): string;
 
   protected async copyToClipboard(code: string): Promise<void> {
-    const minified = this.minifyCode(code);
+    const minified = await this.minifyCode(code);
 
     try {
       await navigator.clipboard.writeText(minified);
@@ -122,17 +155,56 @@ export abstract class BaseGenerator extends HTMLElement {
   }
 
   //TODO: Минификацию и клипбоард вынести в утилиты?
-  protected minifyCode(code: string): string {
-    return code
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/\/\/.*$/gm, '')
-      .replace(/\s+/g, ' ')
-      .replace(/;\s+/g, ';')
-      .replace(/{\s+/g, '{')
-      .replace(/\s+}/g, '}')
-      .replace(/,\s+/g, ',')
-      .replace(/\s*([=+\-*/<>!&|]+)\s*/g, '$1')
-      .trim();
+  protected async minifyCode(code: string): Promise<string> {
+    try {
+      // Загружаем terser из CDN для браузера
+      if (!window.Terser) {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/terser@5/dist/bundle.min.js';
+        document.head.appendChild(script);
+        await new Promise((resolve, reject) => {
+          script.onload = resolve;
+          script.onerror = reject;
+        });
+      }
+
+      // Извлекаем JavaScript код из <script> тэгов
+      const scriptRegex = /<script[^>]*>([\s\S]*?)<\/script>/gi;
+      const match = scriptRegex.exec(code);
+
+      if (match && match[1]) {
+        // Минифицируем только JavaScript код
+        const jsCode = match[1].trim();
+        const result = await window.Terser!.minify(jsCode, {
+          compress: {
+            drop_console: false,
+            drop_debugger: true,
+            pure_funcs: [],
+          },
+          mangle: false,
+          format: {
+            comments: false,
+          },
+        });
+
+        // Возвращаем код в тэгах script
+        return `<script>${result.code || jsCode}</script>`;
+      }
+
+      return code;
+    } catch (error) {
+      console.warn('Terser minification failed, using fallback:', error);
+      return code
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/.*$/gm, '')
+        .replace(/\s+/g, ' ')
+        .replace(/;\s+/g, ';')
+        .replace(/{\s+/g, '{')
+        .replace(/\s+}/g, '}')
+        .replace(/,\s+/g, ',')
+        .replace(/\s*([=+\-*/<>!&|]+)\s*/g, '$1')
+        .trim();
+    }
   }
 
   // Для старых браузеров
@@ -155,6 +227,18 @@ export abstract class BaseGenerator extends HTMLElement {
     }
   }
 
+  protected showSuccessPopup(): void {
+    if (this.elements.successPopup) {
+      (this.elements.successPopup as HTMLElement).style.display = 'flex';
+    }
+  }
+
+  protected hideSuccessPopup(): void {
+    if (this.elements.successPopup) {
+      (this.elements.successPopup as HTMLElement).style.display = 'none';
+    }
+  }
+
   // Отвязываем обработчики
   protected unbindEvents(): void {
     if (this.elements.generator && this.eventHandlers.has('generate')) {
@@ -163,6 +247,27 @@ export abstract class BaseGenerator extends HTMLElement {
 
     if (this.elements.genBtn && this.eventHandlers.has('generate-direct')) {
       this.elements.genBtn.removeEventListener('click', this.eventHandlers.get('generate-direct')!);
+    }
+
+    if (this.elements.popupAcceptBtn && this.eventHandlers.has('popup-accept')) {
+      this.elements.popupAcceptBtn.removeEventListener(
+        'click',
+        this.eventHandlers.get('popup-accept')!,
+      );
+    }
+
+    if (this.elements.popupCloseBtn && this.eventHandlers.has('popup-close')) {
+      this.elements.popupCloseBtn.removeEventListener(
+        'click',
+        this.eventHandlers.get('popup-close')!,
+      );
+    }
+
+    if (this.elements.successPopup && this.eventHandlers.has('popup-overlay')) {
+      this.elements.successPopup.removeEventListener(
+        'click',
+        this.eventHandlers.get('popup-overlay')!,
+      );
     }
 
     this.eventHandlers.clear();
