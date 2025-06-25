@@ -1,4 +1,5 @@
-import { styles } from './GeneratorSection.styles';
+import baseStyles from '../../styles/base.css';
+import generatorSectionStyles from './GeneratorSection.styles.css';
 import { template } from './GeneratorSection.template';
 
 export class GeneratorSection extends HTMLElement {
@@ -58,7 +59,7 @@ export class GeneratorSection extends HTMLElement {
   }
 
   private render(): void {
-    this.shadow.innerHTML = `<style>${styles}</style>${template}`;
+    this.shadow.innerHTML = `<style>${baseStyles}${generatorSectionStyles}</style>${template}`;
   }
 
   private findElements(): void {

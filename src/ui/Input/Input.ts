@@ -1,4 +1,5 @@
-import { styles } from './Input.styles';
+import baseStyles from '../../styles/base.css';
+import inputStyles from './Input.styles.css';
 import { template } from './Input.template';
 import '../Question/Question';
 import { generateUniqueId } from '../../utils/id';
@@ -40,7 +41,7 @@ export class Input extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this.shadowRoot!.innerHTML = `<style>${styles}</style>${template}`;
+    this.shadowRoot!.innerHTML = `<style>${baseStyles}${inputStyles}</style>${template}`;
 
     this.elements.wrapper = this.shadowRoot!.querySelector('.ttg-input-wrapper');
     this.elements.label = this.shadowRoot!.querySelector('label');
@@ -92,21 +93,20 @@ export class Input extends HTMLElement {
 
   validate(): boolean {
     const value = this.value.trim();
+    let isValid = true;
 
     if (this.hasAttribute('required') && !value) {
       this.setError('Это поле обязательно для заполнения');
-      return false;
-    }
-
-    // Validate min/max for number inputs
-    if (this.elements.input?.type === 'number' && value) {
+      isValid = false;
+    } else if (this.elements.input?.type === 'number' && value) {
+      // Validate min/max for number inputs
       const numValue = parseFloat(value);
 
       if (this.hasAttribute('min')) {
         const minValue = parseFloat(this.getAttribute('min')!);
         if (numValue < minValue) {
           this.setError(`Значение должно быть не менее ${minValue}`);
-          return false;
+          isValid = false;
         }
       }
 
@@ -114,13 +114,25 @@ export class Input extends HTMLElement {
         const maxValue = parseFloat(this.getAttribute('max')!);
         if (numValue > maxValue) {
           this.setError(`Значение должно быть не более ${maxValue}`);
-          return false;
+          isValid = false;
         }
       }
     }
 
-    this.clearError();
-    return true;
+    if (isValid) {
+      this.clearError();
+    }
+
+    // Dispatch validation change event
+    this.dispatchEvent(
+      new CustomEvent('validation-change', {
+        detail: { isValid, value },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+
+    return isValid;
   }
 
   forceValidate(): boolean {

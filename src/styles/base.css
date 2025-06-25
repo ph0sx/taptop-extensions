@@ -1,0 +1,8 @@
+/* Base styles for all shadow DOM components */
+:host {
+  box-sizing: border-box;
+}
+
+:host *, :host *::before, :host *::after {
+  box-sizing: inherit;
+}

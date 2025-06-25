@@ -1,4 +1,5 @@
-import { styles } from './Question.styles';
+import baseStyles from '../../styles/base.css';
+import questionStyles from './Question.styles.css';
 import { template } from './Question.template';
 
 interface QuestionElements {
@@ -19,7 +20,7 @@ export class Question extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this.shadowRoot!.innerHTML = `<style>${styles}</style>${template}`;
+    this.shadowRoot!.innerHTML = `<style>${baseStyles}${questionStyles}</style>${template}`;
 
     this.elements.container = this.shadowRoot!.querySelector('.ttg-question-container');
     this.elements.tooltip = this.shadowRoot!.querySelector('.ttg-question-tooltip');

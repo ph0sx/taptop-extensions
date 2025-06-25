@@ -1,11 +1,12 @@
-import { buttonStyles } from './Button.styles.js';
-import { buttonTemplate } from './Button.template.js';
+import baseStyles from '../../styles/base.css';
+import buttonStyles from './Button.styles.css';
+import { buttonTemplate } from './Button.template';
 
 export class Button extends HTMLElement {
   private shadow: ShadowRoot;
 
   static get observedAttributes() {
-    return ['variant'];
+    return ['variant', 'disabled'];
   }
 
   constructor() {
@@ -21,26 +22,47 @@ export class Button extends HTMLElement {
     this.setAttribute('variant', value);
   }
 
+  get disabled() {
+    return this.hasAttribute('disabled');
+  }
+
+  set disabled(value: boolean) {
+    if (value) {
+      this.setAttribute('disabled', '');
+    } else {
+      this.removeAttribute('disabled');
+    }
+  }
+
   connectedCallback() {
     this.render();
     this.updateIdForPrimary();
   }
 
   attributeChangedCallback(name: string) {
-    if (name === 'variant' && this.shadow) {
-      this.updateVariant();
-      this.updateIdForPrimary();
+    if (this.shadow) {
+      switch (name) {
+        case 'variant':
+          this.updateVariant();
+          this.updateIdForPrimary();
+          break;
+        case 'disabled':
+          this.updateDisabledState();
+          break;
+      }
     }
   }
 
   private render() {
     this.shadow.innerHTML = `
       <style>
+        ${baseStyles}
         ${buttonStyles}
       </style>
       ${buttonTemplate}
     `;
     this.updateVariant();
+    this.updateDisabledState();
   }
 
   private updateVariant() {
@@ -54,6 +76,13 @@ export class Button extends HTMLElement {
       );
       // Add current variant class
       button.classList.add(`ttg-button--${this.variant}`);
+    }
+  }
+
+  private updateDisabledState() {
+    const button = this.shadow.querySelector('.ttg-button') as HTMLButtonElement;
+    if (button) {
+      button.disabled = this.disabled;
     }
   }
 
