@@ -2,7 +2,7 @@ export const variables = `
   :root {
     /* Typography */
     --ttg-font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --ttg-font-weight-medium: 500;
+    --ttg-font-weight-medium: 400;
     --ttg-letter-spacing: -0.02em;
     
     /* Text sizes */

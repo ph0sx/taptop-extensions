@@ -10,7 +10,7 @@ export class GeneratorSection extends HTMLElement {
   } = {};
 
   static get observedAttributes() {
-    return ['title', 'bordered'];
+    return ['label', 'bordered'];
   }
 
   constructor() {
@@ -18,12 +18,12 @@ export class GeneratorSection extends HTMLElement {
     this.shadow = this.attachShadow({ mode: 'open' });
   }
 
-  get title(): string {
-    return this.getAttribute('title') || '';
+  get label(): string {
+    return this.getAttribute('label') || '';
   }
 
-  set title(value: string) {
-    this.setAttribute('title', value);
+  set label(value: string) {
+    this.setAttribute('label', value);
   }
 
   get bordered(): boolean {
@@ -49,7 +49,7 @@ export class GeneratorSection extends HTMLElement {
     if (!this.shadow) return;
 
     switch (name) {
-      case 'title':
+      case 'label':
         this.updateTitle();
         break;
       case 'bordered':
@@ -70,11 +70,11 @@ export class GeneratorSection extends HTMLElement {
 
   private updateTitle(): void {
     if (this.elements.title) {
-      this.elements.title.textContent = this.title;
+      this.elements.title.textContent = this.label;
       // Скрываем заголовок если он пустой
       const header = this.shadow.querySelector('.ttg-generator-section-header') as HTMLElement;
       if (header) {
-        header.style.display = this.title ? 'block' : 'none';
+        header.style.display = this.label ? 'block' : 'none';
       }
     }
   }
