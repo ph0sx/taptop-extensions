@@ -15,7 +15,7 @@ export abstract class BaseGenerator extends HTMLElement {
   protected config: GeneratorConfig = {};
   protected elements: GeneratorElements = {};
   private initialized: boolean = false;
-  private eventHandlers: Map<string, EventListener> = new Map();
+  protected eventHandlers: Map<string, EventListener> = new Map();
 
   constructor() {
     super();

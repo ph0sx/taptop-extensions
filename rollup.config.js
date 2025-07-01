@@ -53,4 +53,14 @@ const cookieGeneratorBuild = {
   plugins: commonPlugins,
 };
 
-export default [mainBuild, cookieGeneratorBuild];
+const multilandingGeneratorBuild = {
+  input: 'src/components/multilanding/MultilandingGenerator.ts',
+  output: {
+    file: 'dist/multilanding-generator.js',
+    format: 'es',
+  },
+
+  plugins: commonPlugins,
+};
+
+export default [mainBuild, cookieGeneratorBuild, multilandingGeneratorBuild];
