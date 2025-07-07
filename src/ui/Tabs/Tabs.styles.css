@@ -1,0 +1,12 @@
+.tabs-container {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+  gap: 24px;
+  padding: 14px 16px;
+}
+
+:host {
+  display: block;
+  width: 100%;
+}

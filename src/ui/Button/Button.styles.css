@@ -6,7 +6,7 @@
   border: none;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  
+
   color: var(--ttg-color-text-white);
   text-align: center;
   font-family: var(--ttg-font-family);
@@ -24,7 +24,7 @@
   background: var(--ttg-color-bg-blue-dark);
 }
 
-.ttg-button--primary:focus {
+.ttg-button--primary:active {
   background: var(--ttg-color-bg-blue-darker);
   outline: none;
 }
@@ -39,16 +39,19 @@
   border: 1px dashed var(--ttg-color-bg-blue-base);
   background: var(--ttg-color-bg-blue-lighter);
   color: var(--ttg-color-text-blue-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .ttg-button--secondary:hover {
   border: 1px dashed var(--ttg-color-bg-blue-base);
-  background: #D7E9FE;
+  background: #d7e9fe;
 }
 
-.ttg-button--secondary:focus {
+.ttg-button--secondary:active {
   border: 1px dashed var(--ttg-color-bg-blue-base);
-  background: linear-gradient(0deg, #D7E9FE 0%, #D7E9FE 100%), #FFF;
+  background: linear-gradient(0deg, #d7e9fe 0%, #d7e9fe 100%), #fff;
   outline: none;
 }
 
@@ -69,7 +72,7 @@
   background: var(--ttg-color-bg-gray-900);
 }
 
-.ttg-button--tertiary:focus {
+.ttg-button--tertiary:active {
   background: var(--ttg-color-bg-gray-900);
   outline: none;
 }

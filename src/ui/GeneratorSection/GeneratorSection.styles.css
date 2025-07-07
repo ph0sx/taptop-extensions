@@ -2,6 +2,10 @@
   padding: 20px;
 }
 
+:host(.compact) .ttg-generator-section {
+  padding: 10px 16px;
+}
+
 .ttg-generator-section.with-border {
   border-top: 1px solid #eeeeee;
 }
@@ -17,10 +21,4 @@
   color: var(--ttg-color-text-black);
   letter-spacing: var(--ttg-letter-spacing);
   margin: 0;
-}
-
-.ttg-generator-section-content {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
 }

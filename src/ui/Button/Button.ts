@@ -37,6 +37,35 @@ export class Button extends HTMLElement {
   connectedCallback() {
     this.render();
     this.updateIdForPrimary();
+    this.setupClickHandling();
+  }
+
+  private setupClickHandling() {
+    const button = this.shadow.querySelector('.ttg-button') as HTMLButtonElement;
+    if (button) {
+      button.addEventListener('click', (event) => {
+        if (!this.disabled) {
+          // Create a new click event and dispatch it on the custom element
+          const clickEvent = new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            composed: true, // This allows the event to cross shadow boundaries
+            view: window,
+            detail: event.detail,
+            clientX: event.clientX,
+            clientY: event.clientY,
+            button: event.button,
+            buttons: event.buttons,
+          });
+
+          // Dispatch on the host element (ttg-button)
+          this.dispatchEvent(clickEvent);
+        }
+
+        // Prevent the original event from bubbling
+        event.stopPropagation();
+      });
+    }
   }
 
   attributeChangedCallback(name: string) {

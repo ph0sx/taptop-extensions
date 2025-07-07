@@ -44,7 +44,7 @@ interface MultilandingConfig extends GeneratorConfig {
 }
 
 export default class MultilandingGenerator extends BaseGenerator {
-  private tabButtons: HTMLElement[] = [];
+  private tabsComponent: HTMLElement | null = null;
   private tabContents: HTMLElement[] = [];
   protected config: MultilandingConfig = {
     textReplacements: [
@@ -110,8 +110,8 @@ export default class MultilandingGenerator extends BaseGenerator {
     super.findElements();
 
     // Табы
-    this.tabButtons = Array.from(this.shadow.querySelectorAll('ttg-tab')) as HTMLElement[];
-    this.tabContents = Array.from(this.shadow.querySelectorAll('.ml-tab-content')) as HTMLElement[];
+    this.tabsComponent = this.shadow.querySelector('ttg-tabs');
+    this.tabContents = Array.from(this.shadow.querySelectorAll('.tab-content')) as HTMLElement[];
 
     // Контейнеры для правил
     this.elements.textReplacementsContainer = this.shadow.querySelector(
@@ -125,41 +125,48 @@ export default class MultilandingGenerator extends BaseGenerator {
     // Поля настроек по умолчанию
     this.elements.defaultShowBlocks = this.shadow.querySelector('#default-show-blocks');
     this.elements.defaultHideBlocks = this.shadow.querySelector('#default-hide-blocks');
-
-    // Кнопки добавления
-    this.elements.addTextReplacementBtn = this.shadow.querySelector('#add-text-replacement');
-    this.elements.addBlockRuleBtn = this.shadow.querySelector('#add-block-rule');
-    this.elements.addIpRuleBtn = this.shadow.querySelector('#add-ip-rule');
   }
 
   protected bindEvents(): void {
     super.bindEvents();
 
-    // Обработчики для табов
-    this.tabButtons.forEach((button: HTMLElement) => {
-      const handler = () => this.switchTab(button.dataset.tab || 'text');
-      this.eventHandlers.set(`tab-${button.dataset.tab}`, handler);
-      button.addEventListener('click', handler);
-    });
-
-    // Обработчики для кнопок добавления правил
-    if (this.elements.addTextReplacementBtn) {
-      const handler = () => this.addTextReplacement();
-      this.eventHandlers.set('add-text-replacement', handler);
-      this.elements.addTextReplacementBtn.addEventListener('click', handler);
+    // Обработчик для табов
+    if (this.tabsComponent) {
+      const tabChangeHandler = (e: Event) => {
+        const customEvent = e as CustomEvent;
+        if (customEvent.detail?.tabId) {
+          this.switchTab(customEvent.detail.tabId);
+        }
+      };
+      this.eventHandlers.set('tabs-change', tabChangeHandler);
+      this.tabsComponent.addEventListener('tab-change', tabChangeHandler);
     }
 
-    if (this.elements.addBlockRuleBtn) {
-      const handler = () => this.addBlockRule();
-      this.eventHandlers.set('add-block-rule', handler);
-      this.elements.addBlockRuleBtn.addEventListener('click', handler);
-    }
+    // Обработчик для главных кнопок добавления через event delegation
+    const mainButtonHandler = (e: Event) => {
+      const target = e.target as HTMLElement;
+      const button = target.closest('[data-action]') as HTMLElement;
+      if (!button) return;
 
-    if (this.elements.addIpRuleBtn) {
-      const handler = () => this.addIpRule();
-      this.eventHandlers.set('add-ip-rule', handler);
-      this.elements.addIpRuleBtn.addEventListener('click', handler);
-    }
+      e.preventDefault();
+      e.stopPropagation();
+
+      const action = button.dataset.action;
+
+      switch (action) {
+        case 'add-text-replacement':
+          this.addTextReplacement();
+          break;
+        case 'add-block-rule':
+          this.addBlockRule();
+          break;
+        case 'add-ip-rule':
+          this.addIpRule();
+          break;
+      }
+    };
+    this.eventHandlers.set('main-buttons', mainButtonHandler);
+    this.shadow.addEventListener('click', mainButtonHandler);
 
     // Обработчики для полей настроек по умолчанию (ttg-input components)
     if (this.elements.defaultShowBlocks) {
@@ -202,20 +209,24 @@ export default class MultilandingGenerator extends BaseGenerator {
   }
 
   private switchTab(tabId: string): void {
+    // Сохраняем данные текущего таба перед переключением
+    this.saveCurrentFormData();
+
     this.activeTab = tabId;
 
-    // Убираем активное состояние со всех табов
-    this.tabButtons.forEach((btn: HTMLElement) => {
-      btn.removeAttribute('active');
-    });
+    // Убираем активное состояние со всех табов контента
     this.tabContents.forEach((content: HTMLElement) => content.classList.remove('active'));
 
-    // Активируем нужный таб
-    const activeButton = this.shadow.querySelector(`ttg-tab[data-tab="${tabId}"]`);
+    // Активируем нужный контент таба
     const activeContent = this.shadow.querySelector(`#${tabId}-tab`);
+    if (activeContent) {
+      activeContent.classList.add('active');
+    }
 
-    if (activeButton) activeButton.setAttribute('active', '');
-    if (activeContent) activeContent.classList.add('active');
+    // Обновляем активный таб в компоненте табов (если нужно программно)
+    if (this.tabsComponent && 'activeTab' in this.tabsComponent) {
+      (this.tabsComponent as HTMLElement & { activeTab: string }).activeTab = tabId;
+    }
   }
 
   private addTextReplacement(): void {
@@ -280,6 +291,9 @@ export default class MultilandingGenerator extends BaseGenerator {
       const card = this.createBlockRuleCard(rule, index);
       container.appendChild(card);
     });
+
+    // Configure dropdowns after rendering
+    setTimeout(() => this.configureBlockDropdowns(), 0);
   }
 
   private renderIpRules(): void {
@@ -298,7 +312,10 @@ export default class MultilandingGenerator extends BaseGenerator {
     const dropdowns = this.shadow.querySelectorAll(
       'ttg-dropdown[data-utm-field="paramName"]',
     ) as NodeListOf<
-      HTMLElement & { setOptions: (options: Array<{ value: string; text: string }>) => void }
+      HTMLElement & {
+        setOptions: (options: Array<{ value: string; text: string }>) => void;
+        value: string;
+      }
     >;
 
     const options = [
@@ -311,59 +328,97 @@ export default class MultilandingGenerator extends BaseGenerator {
     ];
 
     dropdowns.forEach((dropdown) => {
+      const parentIndex = parseInt(dropdown.dataset.parentIndex || '0');
+      const ruleIndex = parseInt(dropdown.dataset.ruleIndex || '0');
+      const currentValue =
+        this.config.textReplacements[parentIndex]?.utmRules[ruleIndex]?.paramName || 'utm_content';
+
       dropdown.setOptions(options);
+      dropdown.value = currentValue;
+    });
+  }
+
+  private configureBlockDropdowns(): void {
+    const dropdowns = this.shadow.querySelectorAll(
+      'ttg-dropdown[data-block-field="paramName"]',
+    ) as NodeListOf<
+      HTMLElement & {
+        setOptions: (options: Array<{ value: string; text: string }>) => void;
+        value: string;
+      }
+    >;
+
+    const options = [
+      { value: 'utm_source', text: 'utm_source' },
+      { value: 'utm_medium', text: 'utm_medium' },
+      { value: 'utm_campaign', text: 'utm_campaign' },
+      { value: 'utm_content', text: 'utm_content' },
+      { value: 'utm_term', text: 'utm_term' },
+      { value: 'custom', text: 'Своя метка' },
+    ];
+
+    dropdowns.forEach((dropdown) => {
+      const index = parseInt(dropdown.dataset.index || '0');
+      const currentValue = this.config.blockVisibility[index]?.paramName || 'utm_content';
+
+      dropdown.setOptions(options);
+      dropdown.value = currentValue;
     });
   }
 
   private createTextReplacementCard(item: TextReplacement, index: number): HTMLElement {
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.innerHTML = `
-    <div class="rule-block">
-      <div class="rule-header">
-        <div class="rule-title">
-          <div class="rule-title-text">Правило</div>
-          <div class="rule-number">
-            <div class="rule-number-text">${index + 1}</div>
+    const section = document.createElement('ttg-generator-section');
+    section.className = 'compact';
+    section.innerHTML = `
+      <div class="card">
+        <div class="rule-block">
+          <div class="rule-header">
+            <div class="rule-title">
+              <div class="rule-title-text">Правило</div>
+              <div class="rule-number">
+                <div class="rule-number-text">${index + 1}</div>
+              </div>
+            </div>
+            <button class="remove-btn" data-action="remove-text-replacement" data-index="${index}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M14.9999 14.9999L10 10M10 10L5 5M10 10L15 5M10 10L5 15" stroke="#A9A9A9" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+          <div class="rule-main">
+            <ttg-input
+              label="Ключ" 
+              placeholder="service" 
+              value="${item.keyword}" 
+              required
+              data-field="keyword" 
+              data-index="${index}"
+              tooltip="Идентификатор замены (будет использоваться в шаблоне %%ключ%% на странице)">
+            </ttg-input>
+            <ttg-input 
+              label="Текст по умолчанию" 
+              placeholder="наши услуги" 
+              value="${item.defaultValue}" 
+              required
+              data-field="defaultValue" 
+              data-index="${index}"
+              tooltip="Значение, которое будет подставлено, если не сработает ни одно UTM-правило">
+            </ttg-input>
           </div>
         </div>
-        <button class="remove-btn" data-action="remove-text-replacement" data-index="${index}">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M14.9999 14.9999L10 10M10 10L5 5M10 10L15 5M10 10L5 15" stroke="#A9A9A9" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-      </div>
-      <div class="rule-main">
-        <ttg-input 
-          label="Ключ" 
-          placeholder="service" 
-          value="${item.keyword}" 
-          required
-          data-field="keyword" 
-          data-index="${index}">
-        </ttg-input>
-        <ttg-input 
-          label="Текст по умолчанию" 
-          placeholder="наши услуги" 
-          value="${item.defaultValue}" 
-          required
-          data-field="defaultValue" 
-          data-index="${index}">
-        </ttg-input>
-      </div>
-    </div>
-      <div class="utm-section">
+        <div class="sub-rules-section">
           ${item.utmRules.map((rule, ruleIndex) => this.createUtmRuleHtml(rule, index, ruleIndex)).join('')}
-      </div>
-      <div class="add-utm-section">
-        <button class="add-utm-btn" data-action="add-utm-rule" data-parent-index="${index}">
-          <div class="add-utm-text">Добавить UTM</div>
-        </button>
+        </div>
+        <div class="add-sub-rule-section">
+          <ttg-button variant="tertiary" data-action="add-utm-rule" data-parent-index="${index}">
+            Добавить UTM
+          </ttg-button>
+        </div>
       </div>
     `;
 
-    this.bindCardEvents(card);
-    return card;
+    this.bindCardEvents(section);
+    return section;
   }
 
   private createUtmRuleHtml(
@@ -372,12 +427,12 @@ export default class MultilandingGenerator extends BaseGenerator {
     ruleIndex: number,
   ): string {
     return `
-      <div class="utm-block" data-utm-index="${ruleIndex}">
-        <div class="utm-header">
-          <div class="utm-title">
-            <div class="utm-title-text">UTM</div>
-            <div class="utm-number">
-              <div class="utm-number-text">${ruleIndex + 1}</div>
+      <div class="sub-rule-block" data-utm-index="${ruleIndex}">
+        <div class="sub-rule-header">
+          <div class="sub-rule-title">
+            <div class="sub-rule-title-text">UTM</div>
+            <div class="sub-rule-number">
+              <div class="sub-rule-number-text">${ruleIndex + 1}</div>
             </div>
           </div>
           <button class="remove-btn" data-action="remove-utm-rule" data-parent-index="${parentIndex}" data-rule-index="${ruleIndex}">
@@ -386,14 +441,16 @@ export default class MultilandingGenerator extends BaseGenerator {
             </svg>
           </button>
         </div>
-        <div class="utm-content">
+        <div class="sub-rule-content">
           <ttg-dropdown 
             label="Параметр UTM" 
             required
             value="${rule.paramName}"
             data-utm-field="paramName" 
             data-parent-index="${parentIndex}" 
-            data-rule-index="${ruleIndex}">
+            data-rule-index="${ruleIndex}"
+            tooltip="Метка в URL, которая помогает отслеживать, откуда пришёл пользователь (например, из рекламы, email-рассылки или соцсетей)."
+            >
           </ttg-dropdown>
           <ttg-input 
             label="Значение параметра" 
@@ -419,116 +476,156 @@ export default class MultilandingGenerator extends BaseGenerator {
   }
 
   private createBlockRuleCard(rule: BlockVisibilityRule, index: number): HTMLElement {
-    const card = document.createElement('div');
-    card.className = 'ml-card';
-    card.innerHTML = `
-      <div class="ml-card-header">
-        <div class="ml-card-title">Блок <span class="ml-rule-index">${index + 1}</span></div>
-        <button class="ml-remove-btn" data-action="remove-block-rule" data-index="${index}">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
-      <div class="ml-card-body">
-        <div class="ml-form-row">
-          <div class="ml-form-group">
-            <label>Параметр URL</label>
-            <select class="ml-select" data-block-field="paramName" data-index="${index}">
-              <option value="utm_source" ${rule.paramName === 'utm_source' ? 'selected' : ''}>utm_source</option>
-              <option value="utm_medium" ${rule.paramName === 'utm_medium' ? 'selected' : ''}>utm_medium</option>
-              <option value="utm_campaign" ${rule.paramName === 'utm_campaign' ? 'selected' : ''}>utm_campaign</option>
-              <option value="utm_content" ${rule.paramName === 'utm_content' ? 'selected' : ''}>utm_content</option>
-              <option value="utm_term" ${rule.paramName === 'utm_term' ? 'selected' : ''}>utm_term</option>
-            </select>
+    const section = document.createElement('ttg-generator-section');
+    section.className = 'compact';
+    section.innerHTML = `
+      <div class="card">
+        <div class="rule-block">
+          <div class="rule-header">
+            <div class="rule-title">
+              <div class="rule-title-text">Блок</div>
+              <div class="rule-number">
+                <div class="rule-number-text">${index + 1}</div>
+              </div>
+            </div>
+            <button class="remove-btn" data-action="remove-block-rule" data-index="${index}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M14.9999 14.9999L10 10M10 10L5 5M10 10L15 5M10 10L5 15" stroke="#A9A9A9" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
           </div>
-          <div class="ml-form-group">
-            <label>Значение параметра</label>
-            <input type="text" class="ml-input" value="${rule.paramValue}" data-block-field="paramValue" data-index="${index}">
+          <div class="rule-main">
+            <ttg-dropdown 
+              label="Параметр URL" 
+              required
+              value="${rule.paramName}"
+              data-block-field="paramName" 
+              data-index="${index}">
+            </ttg-dropdown>
+            <ttg-input 
+              label="Значение параметра" 
+              placeholder="spring_sale" 
+              value="${rule.paramValue}" 
+              required
+              data-block-field="paramValue" 
+              data-index="${index}">
+            </ttg-input>
           </div>
         </div>
-        <div class="ml-section-divider">
-          <span>Настройка видимости</span>
-        </div>
-        <div class="ml-form-row">
-          <div class="ml-form-group">
-            <label>Показать блоки (через запятую)</label>
-            <input type="text" class="ml-input" value="${rule.showBlocks.join(', ')}" data-block-field="showBlocks" data-index="${index}">
-          </div>
-          <div class="ml-form-group">
-            <label>Скрыть блоки (через запятую)</label>
-            <input type="text" class="ml-input" value="${rule.hideBlocks.join(', ')}" data-block-field="hideBlocks" data-index="${index}">
+        <div class="sub-rules-section">
+          <div class="sub-rule-block">
+            <div class="sub-rule-header">
+              <div class="sub-rule-title">
+                <div class="sub-rule-title-text">Настройка видимости</div>
+              </div>
+            </div>
+            <div class="sub-rule-content">
+              <ttg-input 
+                label="Показать блоки (через запятую)" 
+                placeholder="block1, block2" 
+                value="${rule.showBlocks.join(', ')}" 
+                data-block-field="showBlocks" 
+                data-index="${index}">
+              </ttg-input>
+              <ttg-input 
+                label="Скрыть блоки (через запятую)" 
+                placeholder="block3, block4" 
+                value="${rule.hideBlocks.join(', ')}" 
+                data-block-field="hideBlocks" 
+                data-index="${index}">
+              </ttg-input>
+            </div>
           </div>
         </div>
       </div>
     `;
 
-    this.bindCardEvents(card);
-    return card;
+    this.bindCardEvents(section);
+    return section;
   }
 
   private createIpRuleCard(rule: IpRule, index: number): HTMLElement {
-    const card = document.createElement('div');
-    card.className = 'ml-card';
-    card.innerHTML = `
-      <div class="ml-card-header">
-        <div class="ml-card-title">Регион <span class="ml-rule-index">${index + 1}</span></div>
-        <button class="ml-remove-btn" data-action="remove-ip-rule" data-index="${index}">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
-      <div class="ml-card-body">
-        <div class="ml-form-row">
-          <div class="ml-form-group">
-            <label>Страна</label>
-            <input type="text" class="ml-input" value="${rule.country}" data-ip-field="country" data-index="${index}" placeholder="Russia или * для любой">
-            <p class="ml-helper-text">Название страны на английском (Russia, Belarus)</p>
+    const section = document.createElement('ttg-generator-section');
+    section.className = 'compact';
+    section.innerHTML = `
+      <div class="card">
+        <div class="rule-block">
+          <div class="rule-header">
+            <div class="rule-title">
+              <div class="rule-title-text">Регион</div>
+              <div class="rule-number">
+                <div class="rule-number-text">${index + 1}</div>
+              </div>
+            </div>
+            <button class="remove-btn" data-action="remove-ip-rule" data-index="${index}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M14.9999 14.9999L10 10M10 10L5 5M10 10L15 5M10 10L5 15" stroke="#A9A9A9" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
           </div>
-          <div class="ml-form-group">
-            <label>Город</label>
-            <input type="text" class="ml-input" value="${rule.city}" data-ip-field="city" data-index="${index}" placeholder="Moscow или * для любого">
-            <p class="ml-helper-text">Название города на английском или * для любого</p>
-          </div>
-          <div class="ml-form-group">
-            <label>Регион</label>
-            <input type="text" class="ml-input" value="${rule.region}" data-ip-field="region" data-index="${index}" placeholder="* для любого">
-            <p class="ml-helper-text">Название региона на английском или * для любого</p>
+          <div class="rule-main">
+            <ttg-input 
+              label="Страна" 
+              placeholder="Russia или * для любой" 
+              value="${rule.country}" 
+              required
+              data-ip-field="country" 
+              data-index="${index}">
+            </ttg-input>
+            <ttg-input 
+              label="Город" 
+              placeholder="Moscow или * для любого" 
+              value="${rule.city}" 
+              data-ip-field="city" 
+              data-index="${index}">
+            </ttg-input>
+            <ttg-input 
+              label="Регион" 
+              placeholder="* для любого" 
+              value="${rule.region}" 
+              data-ip-field="region" 
+              data-index="${index}">
+            </ttg-input>
           </div>
         </div>
-        <div class="ml-section-divider">
-          <span>Замены текста</span>
-        </div>
-        <div class="ml-ip-text-container" data-parent-index="${index}">
+        <div class="sub-rules-section">
           ${rule.textReplacements.map((rep, repIndex) => this.createIpTextReplacementHtml(rep, index, repIndex)).join('')}
         </div>
-        <button class="ml-add-ip-text-btn" data-action="add-ip-text-replacement" data-parent-index="${index}">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 5V19M5 12H19"></path>
-          </svg>
-          Добавить замену текста
-        </button>
-        <div class="ml-section-divider">
-          <span>Настройка видимости</span>
+        <div class="add-sub-rule-section">
+          <ttg-button variant="tertiary" data-action="add-ip-text-replacement" data-parent-index="${index}">
+            Добавить замену текста
+          </ttg-button>
         </div>
-        <div class="ml-form-row">
-          <div class="ml-form-group">
-            <label>Показать блоки (через запятую)</label>
-            <input type="text" class="ml-input" value="${rule.showBlocks.join(', ')}" data-ip-field="showBlocks" data-index="${index}">
-          </div>
-          <div class="ml-form-group">
-            <label>Скрыть блоки (через запятую)</label>
-            <input type="text" class="ml-input" value="${rule.hideBlocks.join(', ')}" data-ip-field="hideBlocks" data-index="${index}">
+        <div class="sub-rules-section">
+          <div class="sub-rule-block">
+            <div class="sub-rule-header">
+              <div class="sub-rule-title">
+                <div class="sub-rule-title-text">Видимость блоков</div>
+              </div>
+            </div>
+            <div class="sub-rule-content">
+              <ttg-input 
+                label="Показать блоки (через запятую)" 
+                placeholder="block_ru" 
+                value="${rule.showBlocks.join(', ')}" 
+                data-ip-field="showBlocks" 
+                data-index="${index}">
+              </ttg-input>
+              <ttg-input 
+                label="Скрыть блоки (через запятую)" 
+                placeholder="block_en" 
+                value="${rule.hideBlocks.join(', ')}" 
+                data-ip-field="hideBlocks" 
+                data-index="${index}">
+              </ttg-input>
+            </div>
           </div>
         </div>
       </div>
     `;
 
-    this.bindCardEvents(card);
-    return card;
+    this.bindCardEvents(section);
+    return section;
   }
 
   private createIpTextReplacementHtml(
@@ -537,29 +634,48 @@ export default class MultilandingGenerator extends BaseGenerator {
     repIndex: number,
   ): string {
     return `
-      <div class="ml-ip-text-rule">
-        <div class="ml-utm-rule-header">
-          <span class="ml-utm-badge">Замена <span class="ml-utm-index">${repIndex + 1}</span></span>
-          <button class="ml-remove-btn" data-action="remove-ip-text-replacement" data-parent-index="${parentIndex}" data-rep-index="${repIndex}">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
+      <div class="sub-rule-block" data-ip-text-index="${repIndex}">
+        <div class="sub-rule-header">
+          <div class="sub-rule-title">
+            <div class="sub-rule-title-text">Замена</div>
+            <div class="sub-rule-number">
+              <div class="sub-rule-number-text">${repIndex + 1}</div>
+            </div>
+          </div>
+          <button class="remove-btn" data-action="remove-ip-text-replacement" data-parent-index="${parentIndex}" data-rep-index="${repIndex}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M14.9999 14.9999L10 10M10 10L5 5M10 10L15 5M10 10L5 15" stroke="#A9A9A9" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
         </div>
-        <div class="ml-form-row">
-          <div class="ml-form-group">
-            <label>Ключ</label>
-            <input type="text" class="ml-input" value="${rep.keyword}" data-ip-text-field="keyword" data-parent-index="${parentIndex}" data-rep-index="${repIndex}">
-          </div>
-          <div class="ml-form-group">
-            <label>Текст по умолчанию</label>
-            <input type="text" class="ml-input" value="${rep.defaultValue}" data-ip-text-field="defaultValue" data-parent-index="${parentIndex}" data-rep-index="${repIndex}">
-          </div>
-          <div class="ml-form-group">
-            <label>Текст замены для IP-правила</label>
-            <input type="text" class="ml-input" value="${rep.replacementValue}" data-ip-text-field="replacementValue" data-parent-index="${parentIndex}" data-rep-index="${repIndex}">
-          </div>
+        <div class="sub-rule-content">
+          <ttg-input 
+            label="Ключ" 
+            placeholder="region" 
+            value="${rep.keyword}" 
+            required
+            data-ip-text-field="keyword" 
+            data-parent-index="${parentIndex}" 
+            data-rep-index="${repIndex}">
+          </ttg-input>
+          <ttg-input 
+            label="Текст по умолчанию" 
+            placeholder="в вашем регионе" 
+            value="${rep.defaultValue}" 
+            required
+            data-ip-text-field="defaultValue" 
+            data-parent-index="${parentIndex}" 
+            data-rep-index="${repIndex}">
+          </ttg-input>
+          <ttg-input 
+            label="Текст замены для IP-правила" 
+            placeholder="в России" 
+            value="${rep.replacementValue}" 
+            required
+            data-ip-text-field="replacementValue" 
+            data-parent-index="${parentIndex}" 
+            data-rep-index="${repIndex}">
+          </ttg-input>
         </div>
       </div>
     `;
@@ -737,13 +853,30 @@ export default class MultilandingGenerator extends BaseGenerator {
     card.addEventListener('change', (e) => {
       const target = e.target as HTMLElement;
 
-      // Обработка ttg-dropdown
+      // Обработка ttg-dropdown для UTM правил
       if (target.tagName === 'TTG-DROPDOWN' && target.dataset.utmField === 'paramName') {
         const parentIndex = parseInt(target.dataset.parentIndex || '0');
         const ruleIndex = parseInt(target.dataset.ruleIndex || '0');
 
         if (this.config.textReplacements[parentIndex]?.utmRules[ruleIndex]) {
           const rule = this.config.textReplacements[parentIndex].utmRules[ruleIndex];
+          const dropdown = target as HTMLElement & { value: string };
+
+          if (dropdown.value === 'custom') {
+            rule.paramName = 'my_param';
+            // Показываем кастомное поле - пока не реализовано
+          } else {
+            rule.paramName = dropdown.value;
+          }
+        }
+      }
+
+      // Обработка ttg-dropdown для блоков
+      if (target.tagName === 'TTG-DROPDOWN' && target.dataset.blockField === 'paramName') {
+        const index = parseInt(target.dataset.index || '0');
+
+        if (this.config.blockVisibility[index]) {
+          const rule = this.config.blockVisibility[index];
           const dropdown = target as HTMLElement & { value: string };
 
           if (dropdown.value === 'custom') {
@@ -806,6 +939,67 @@ export default class MultilandingGenerator extends BaseGenerator {
         }
       }
     });
+
+    // Сохраняем данные из полей блоков
+    this.shadow.querySelectorAll('[data-block-field]').forEach((element) => {
+      const input = element as HTMLElement & { value: string };
+      const index = parseInt(input.dataset.index || '0');
+      const field = input.dataset.blockField;
+
+      if (this.config.blockVisibility[index]) {
+        const rule = this.config.blockVisibility[index];
+        if (field === 'paramName') {
+          rule.paramName = input.value;
+        } else if (field === 'paramValue') {
+          rule.paramValue = input.value;
+        } else if (field === 'showBlocks') {
+          rule.showBlocks = this.parseCommaList(input.value);
+        } else if (field === 'hideBlocks') {
+          rule.hideBlocks = this.parseCommaList(input.value);
+        }
+      }
+    });
+
+    // Сохраняем данные из IP полей
+    this.shadow.querySelectorAll('[data-ip-field]').forEach((element) => {
+      const input = element as HTMLElement & { value: string };
+      const index = parseInt(input.dataset.index || '0');
+      const field = input.dataset.ipField;
+
+      if (this.config.ipRules[index]) {
+        const rule = this.config.ipRules[index];
+        if (field === 'country') {
+          rule.country = input.value;
+        } else if (field === 'city') {
+          rule.city = input.value;
+        } else if (field === 'region') {
+          rule.region = input.value;
+        } else if (field === 'showBlocks') {
+          rule.showBlocks = this.parseCommaList(input.value);
+        } else if (field === 'hideBlocks') {
+          rule.hideBlocks = this.parseCommaList(input.value);
+        }
+      }
+    });
+
+    // Сохраняем данные из IP текстовых замен
+    this.shadow.querySelectorAll('[data-ip-text-field]').forEach((element) => {
+      const input = element as HTMLElement & { value: string };
+      const parentIndex = parseInt(input.dataset.parentIndex || '0');
+      const repIndex = parseInt(input.dataset.repIndex || '0');
+      const field = input.dataset.ipTextField;
+
+      if (this.config.ipRules[parentIndex]?.textReplacements[repIndex]) {
+        const rep = this.config.ipRules[parentIndex].textReplacements[repIndex];
+        if (field === 'keyword') {
+          rep.keyword = input.value;
+        } else if (field === 'defaultValue') {
+          rep.defaultValue = input.value;
+        } else if (field === 'replacementValue') {
+          rep.replacementValue = input.value;
+        }
+      }
+    });
   }
 
   private collectCustomParameters(): string[] {
@@ -831,7 +1025,48 @@ export default class MultilandingGenerator extends BaseGenerator {
   }
 
   protected collectData(): MultilandingConfig | null {
-    // Простая валидация
+    // Сохраняем текущие данные из формы
+    this.saveCurrentFormData();
+
+    // Валидация текстовых замен
+    for (const replacement of this.config.textReplacements) {
+      if (!replacement.keyword || !replacement.defaultValue) {
+        alert('Заполните все обязательные поля в разделе "Замена текста"');
+        return null;
+      }
+
+      for (const utmRule of replacement.utmRules) {
+        if (!utmRule.paramName || !utmRule.paramValue || !utmRule.replacementValue) {
+          alert('Заполните все поля UTM правил в разделе "Замена текста"');
+          return null;
+        }
+      }
+    }
+
+    // Валидация правил блоков
+    for (const rule of this.config.blockVisibility) {
+      if (!rule.paramName || !rule.paramValue) {
+        alert('Заполните все обязательные поля в разделе "Управление блоками"');
+        return null;
+      }
+    }
+
+    // Валидация IP правил
+    for (const rule of this.config.ipRules) {
+      if (!rule.country) {
+        alert('Укажите страну в разделе "Правила по IP"');
+        return null;
+      }
+
+      for (const textRep of rule.textReplacements) {
+        if (!textRep.keyword || !textRep.defaultValue || !textRep.replacementValue) {
+          alert('Заполните все поля текстовых замен в разделе "Правила по IP"');
+          return null;
+        }
+      }
+    }
+
+    // Проверяем что есть хотя бы одно правило
     const hasValidRules =
       this.config.textReplacements.length > 0 ||
       this.config.blockVisibility.length > 0 ||
@@ -863,6 +1098,7 @@ class TaptopContentChanger {
     this.config = config || { textReplacements: [], blockVisibility: [], ipRules: [] };
     this.utmParams = this.getUTMParams();
     this.ipInfo = null;
+    this.utmRulesApplied = false; // Track if UTM rules were applied
 
     this.replaceText();
     this.toggleBlocksVisibility();
@@ -935,14 +1171,18 @@ class TaptopContentChanger {
       matched.textReplacements?.forEach(rep => {
         this.replaceAll(rep.keyword, rep.replacementValue);
       });
-      this.applyVisibilityRules(matched.showBlocks, matched.hideBlocks);
+      // Применяем правила видимости блоков только если они не пустые и UTM правила не были применены
+      if ((matched.showBlocks?.length || matched.hideBlocks?.length) && !this.utmRulesApplied) {
+        this.applyVisibilityRules(matched.showBlocks, matched.hideBlocks);
+      }
     } else {
       this.config.ipRules.forEach(rule => {
         rule.textReplacements?.forEach(rep => {
           this.replaceAll(rep.keyword, rep.defaultValue);
         });
       });
-      if (this.config.defaultBlockVisibility) {
+      // Применяем настройки по умолчанию только если UTM правила не были применены
+      if (this.config.defaultBlockVisibility && !this.utmRulesApplied) {
         const { showBlocks, hideBlocks } = this.config.defaultBlockVisibility;
         this.applyVisibilityRules(showBlocks, hideBlocks);
       }
@@ -986,31 +1226,53 @@ class TaptopContentChanger {
   }
 
   toggleBlocksVisibility() {
+    console.log('toggleBlocksVisibility called');
+    console.log('UTM params:', this.utmParams);
+    console.log('Block visibility rules:', this.config.blockVisibility);
+    
     if (!this.config.blockVisibility?.length) return;
     let matched = null;
     for (const rule of this.config.blockVisibility) {
       const val = this.utmParams[rule.paramName];
+      console.log('Checking rule: ' + rule.paramName + ' = ' + val + ', expected: ' + rule.paramValue);
       if (val && (val === rule.paramValue || rule.paramValue === "*")) {
         matched = rule;
+        console.log('Rule matched!', matched);
         break;
       }
     }
     if (matched) {
+      console.log('Applying matched rule visibility:', matched.showBlocks, matched.hideBlocks);
+      this.utmRulesApplied = true; // Set flag when UTM rules are applied
       this.applyVisibilityRules(matched.showBlocks, matched.hideBlocks);
     } else if (this.config.defaultBlockVisibility) {
+      console.log('Applying default visibility:', this.config.defaultBlockVisibility);
       const { showBlocks, hideBlocks } = this.config.defaultBlockVisibility;
       this.applyVisibilityRules(showBlocks, hideBlocks);
     }
   }
 
   applyVisibilityRules(showBlocks, hideBlocks) {
+    console.log('applyVisibilityRules called with:', { showBlocks, hideBlocks });
+    
     (hideBlocks||[]).forEach((id) => {
-      document.querySelectorAll(\`#\${id},.\${id},[data-block-id="\${id}"]\`)
-        .forEach(el => el.style.display = "none");
+      const selector = '#' + id + ',.' + id + ',[data-block-id="' + id + '"]';
+      const elements = document.querySelectorAll(selector);
+      console.log('Hiding elements for id "' + id + '":', elements.length, 'elements found');
+      elements.forEach(el => {
+        el.style.setProperty('display', 'none', 'important');
+        console.log('Hidden element:', el, 'display:', el.style.display);
+      });
     });
+    
     (showBlocks||[]).forEach((id) => {
-      document.querySelectorAll(\`#\${id},.\${id},[data-block-id="\${id}"]\`)
-        .forEach(el => el.style.display = "");
+      const selector = '#' + id + ',.' + id + ',[data-block-id="' + id + '"]';
+      const elements = document.querySelectorAll(selector);
+      console.log('Showing elements for id "' + id + '":', elements.length, 'elements found');
+      elements.forEach(el => {
+        el.style.setProperty('display', 'flex', 'important');
+        console.log('Shown element:', el, 'display:', el.style.display);
+      });
     });
   }
 }

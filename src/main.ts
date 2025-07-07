@@ -7,6 +7,8 @@ import './ui/Input/Input.js';
 import './ui/Button/Button.js';
 import './ui/Generator/Generator.js';
 import './ui/GeneratorSection/GeneratorSection.js';
+import './ui/Tab/Tab.js';
+import './ui/Tabs/Tabs.js';
 import './components/cookie/CookieGenerator.js';
 import './components/multilanding/MultilandingGenerator.js';
 
