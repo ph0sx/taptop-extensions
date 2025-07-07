@@ -117,6 +117,40 @@ export class Input extends HTMLElement {
           isValid = false;
         }
       }
+    } else if (this.elements.input?.type === 'time' && value) {
+      // Validate min/max for time inputs
+      if (this.hasAttribute('min')) {
+        const minTime = this.getAttribute('min')!;
+        if (value < minTime) {
+          this.setError(`Время должно быть не раньше ${minTime}`);
+          isValid = false;
+        }
+      }
+
+      if (this.hasAttribute('max')) {
+        const maxTime = this.getAttribute('max')!;
+        if (value > maxTime) {
+          this.setError(`Время должно быть не позже ${maxTime}`);
+          isValid = false;
+        }
+      }
+    } else if (this.elements.input?.type === 'date' && value) {
+      // Validate min/max for date inputs
+      if (this.hasAttribute('min')) {
+        const minDate = this.getAttribute('min')!;
+        if (value < minDate) {
+          this.setError(`Дата должна быть не раньше ${minDate}`);
+          isValid = false;
+        }
+      }
+
+      if (this.hasAttribute('max')) {
+        const maxDate = this.getAttribute('max')!;
+        if (value > maxDate) {
+          this.setError(`Дата должна быть не позже ${maxDate}`);
+          isValid = false;
+        }
+      }
     }
 
     if (isValid) {
