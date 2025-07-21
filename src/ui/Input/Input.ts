@@ -9,6 +9,8 @@ interface InputElements {
   label: HTMLLabelElement | null;
   input: HTMLInputElement | null;
   errorMessage: HTMLElement | null;
+  actionButton: HTMLButtonElement | null;
+  inputField: HTMLElement | null;
 }
 
 export class Input extends HTMLElement {
@@ -17,6 +19,8 @@ export class Input extends HTMLElement {
     label: null,
     input: null,
     errorMessage: null,
+    actionButton: null,
+    inputField: null,
   };
 
   private touched = false;
@@ -35,6 +39,8 @@ export class Input extends HTMLElement {
       'tooltip',
       'min',
       'max',
+      'show-action-button',
+      'action-tooltip',
     ];
   }
 
@@ -47,6 +53,8 @@ export class Input extends HTMLElement {
     this.elements.label = this.shadowRoot!.querySelector('label');
     this.elements.input = this.shadowRoot!.querySelector('.ttg-input-control');
     this.elements.errorMessage = this.shadowRoot!.querySelector('.ttg-input-error-text');
+    this.elements.actionButton = this.shadowRoot!.querySelector('.ttg-input-action-button');
+    this.elements.inputField = this.shadowRoot!.querySelector('.ttg-input-field');
 
     // Устанавливаем связь между label и input
     if (this.elements.input) {
@@ -200,7 +208,18 @@ export class Input extends HTMLElement {
       }
     });
 
+    // Action button event handler
+    this.elements.actionButton?.addEventListener('click', () => {
+      this.dispatchEvent(
+        new CustomEvent('action-click', {
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    });
+
     this.updateTooltip();
+    this.updateActionButton();
   }
 
   attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
@@ -282,6 +301,14 @@ export class Input extends HTMLElement {
           }
         }
         break;
+
+      case 'show-action-button':
+        this.updateActionButton();
+        break;
+
+      case 'action-tooltip':
+        this.updateActionButtonTooltip();
+        break;
     }
   }
 
@@ -301,6 +328,31 @@ export class Input extends HTMLElement {
         questionElement.setAttribute('tooltip', tooltipValue);
       } else {
         questionElement.style.display = 'none';
+      }
+    }
+  }
+
+  private updateActionButton() {
+    if (this.elements.actionButton && this.elements.inputField) {
+      const showActionButton = this.hasAttribute('show-action-button');
+
+      if (showActionButton) {
+        this.elements.actionButton.style.display = 'flex';
+        this.elements.inputField.classList.add('has-action-button');
+      } else {
+        this.elements.actionButton.style.display = 'none';
+        this.elements.inputField.classList.remove('has-action-button');
+      }
+    }
+  }
+
+  private updateActionButtonTooltip() {
+    if (this.elements.actionButton) {
+      const tooltipValue = this.getAttribute('action-tooltip');
+      if (tooltipValue) {
+        this.elements.actionButton.setAttribute('title', tooltipValue);
+      } else {
+        this.elements.actionButton.removeAttribute('title');
       }
     }
   }
