@@ -37,7 +37,7 @@ export const template = `
           <div class="rule-header">
             <div class="rule-title">
               <div class="sub-rule-title-text">Настройки по умолчанию</div>
-              <ttg-question></ttg-question>
+              <ttg-question tooltip="Эти блоки будут показаны/скрыты, если не сработает ни одно из правил UTM."></ttg-question>
             </div>
         </div>
         <div class="rule-main">

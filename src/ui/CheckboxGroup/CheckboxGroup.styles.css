@@ -1,0 +1,77 @@
+/* COMMON WRAPPER */
+.ttg-checkbox-group-wrapper {
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ======== LABEL ============ */
+
+/* LABEL GROUP */
+.ttg-checkbox-group-wrapper label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--grey-900, #666);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: -0.28px;
+}
+
+/* REQUIRED ICON */
+.ttg-checkbox-group-required {
+  display: none;
+  color: var(--red, #ff2b71);
+}
+
+/* ======== CHECKBOX ITEMS CONTAINER ============ */
+
+/* ITEMS CONTAINER */
+.ttg-checkbox-group-items {
+  display: flex;
+}
+
+/* VERTICAL ORIENTATION (default) */
+.ttg-checkbox-group-items.vertical {
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* HORIZONTAL ORIENTATION */
+.ttg-checkbox-group-items.horizontal {
+  flex-direction: row;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+/* ======== ERROR ============ */
+
+/* ERROR GROUP */
+.ttg-checkbox-group-error {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ERROR TEXT */
+.ttg-checkbox-group-error-text {
+  color: var(--critical, #ff2b71);
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: -0.28px;
+}
+
+/* ======== STATE ============ */
+
+/* Скрываем блок ошибки по умолчанию */
+.ttg-checkbox-group-error {
+  display: none;
+  gap: 4px;
+}
+
+/* Показываем блок ошибки при наличии класса error */
+.ttg-checkbox-group-wrapper.error .ttg-checkbox-group-error {
+  display: flex;
+}
