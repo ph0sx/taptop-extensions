@@ -2,6 +2,7 @@ import { BaseGenerator, type GeneratorConfig } from '../base/BaseGenerator';
 import { initGlobalStyles } from '../../utils/global-styles';
 import multilandingStyles from './MultilandingGenerator.styles.css';
 import { template } from './MultilandingGenerator.template';
+import '../../ui/CountriesModal/CountriesModal';
 
 interface TextReplacement {
   keyword: string;
@@ -46,6 +47,7 @@ interface MultilandingConfig extends GeneratorConfig {
 export default class MultilandingGenerator extends BaseGenerator {
   private tabsComponent: HTMLElement | null = null;
   private tabContents: HTMLElement[] = [];
+  private countriesModal: HTMLElement | null = null;
   protected config: MultilandingConfig = {
     textReplacements: [
       {
@@ -570,7 +572,10 @@ export default class MultilandingGenerator extends BaseGenerator {
               value="${rule.country}" 
               required
               data-ip-field="country" 
-              data-index="${index}">
+              data-index="${index}"
+              show-action-button
+              action-tooltip="Показать список стран"
+              class="country-input">
             </ttg-input>
             <ttg-input 
               label="Город" 
@@ -849,6 +854,15 @@ export default class MultilandingGenerator extends BaseGenerator {
       }
     });
 
+    // Обработка action-click событий для кнопок стран
+    card.addEventListener('action-click', (e) => {
+      const target = e.target as HTMLElement;
+      // Check if this is a country input with action button
+      if (target.classList.contains('country-input')) {
+        this.showCountriesModal(target);
+      }
+    });
+
     // Обработка селектов UTM параметров и dropdown'ов
     card.addEventListener('change', (e) => {
       const target = e.target as HTMLElement;
@@ -892,6 +906,14 @@ export default class MultilandingGenerator extends BaseGenerator {
 
   protected unbindEvents(): void {
     super.unbindEvents();
+
+    // Cleanup countries modal if it exists
+    if (this.countriesModal) {
+      if ('close' in this.countriesModal && typeof this.countriesModal.close === 'function') {
+        this.countriesModal.close();
+      }
+      this.countriesModal = null;
+    }
 
     // Очищаем специальные обработчики мультилендинга
     // Они уже очищены в super.unbindEvents() поскольку вызывается eventHandlers.clear()
@@ -1022,6 +1044,42 @@ export default class MultilandingGenerator extends BaseGenerator {
     });
 
     return Array.from(customParams);
+  }
+
+  private showCountriesModal(targetInput: HTMLElement): void {
+    // Create new modal instance
+    this.countriesModal = document.createElement('ttg-countries-modal') as HTMLElement;
+
+    // Set up country selection handler
+    const countrySelectHandler = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail?.country) {
+        // Update the target input value
+        if ('value' in targetInput && typeof (targetInput as HTMLInputElement).value === 'string') {
+          (targetInput as HTMLInputElement).value = customEvent.detail.country;
+          // Trigger change event to update the config
+          targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+    };
+
+    // Set up close handler to clean up
+    const closeHandler = () => {
+      if (this.countriesModal) {
+        this.countriesModal.removeEventListener('country-select', countrySelectHandler);
+        this.countriesModal.removeEventListener('modal-close', closeHandler);
+        this.countriesModal = null;
+      }
+    };
+
+    // Add event listeners
+    this.countriesModal.addEventListener('country-select', countrySelectHandler);
+    this.countriesModal.addEventListener('modal-close', closeHandler);
+
+    // Show the modal
+    if ('show' in this.countriesModal && typeof this.countriesModal.show === 'function') {
+      this.countriesModal.show();
+    }
   }
 
   protected collectData(): MultilandingConfig | null {
