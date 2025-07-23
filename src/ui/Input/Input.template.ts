@@ -26,5 +26,3 @@ export const template = `
       </div>
     </div>
 `;
-
-// Поменять <span class="ttg-input-error-icon">ICON</span> и  <ttg-question tooltip-text="Ваша подсказка здесь"></ttg-question>

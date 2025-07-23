@@ -84,6 +84,15 @@ export class Generator extends HTMLElement {
     let isFormValid = true;
 
     inputs.forEach((input) => {
+      // Skip hidden fields in validation
+      if (
+        input.classList.contains('hidden') ||
+        input.style.display === 'none' ||
+        getComputedStyle(input).display === 'none'
+      ) {
+        return;
+      }
+
       if (input.forceValidate && !input.forceValidate()) {
         isFormValid = false;
       }
@@ -104,6 +113,15 @@ export class Generator extends HTMLElement {
     >;
 
     for (const input of inputs) {
+      // Skip hidden fields in validation
+      if (
+        input.classList.contains('hidden') ||
+        input.style.display === 'none' ||
+        getComputedStyle(input).display === 'none'
+      ) {
+        continue;
+      }
+
       // Check if input has validation errors
       if (input.hasError) {
         return false;
@@ -111,7 +129,7 @@ export class Generator extends HTMLElement {
 
       const value = input.value?.trim() || '';
 
-      // Check required inputs
+      // Check required inputs (only for visible fields)
       if (input.hasAttribute('required') && !value) {
         return false;
       }

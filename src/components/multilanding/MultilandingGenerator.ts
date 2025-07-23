@@ -326,7 +326,6 @@ export default class MultilandingGenerator extends BaseGenerator {
       { value: 'utm_campaign', text: 'utm_campaign' },
       { value: 'utm_content', text: 'utm_content' },
       { value: 'utm_term', text: 'utm_term' },
-      { value: 'custom', text: 'Своя метка' },
     ];
 
     dropdowns.forEach((dropdown) => {
@@ -356,7 +355,6 @@ export default class MultilandingGenerator extends BaseGenerator {
       { value: 'utm_campaign', text: 'utm_campaign' },
       { value: 'utm_content', text: 'utm_content' },
       { value: 'utm_term', text: 'utm_term' },
-      { value: 'custom', text: 'Своя метка' },
     ];
 
     dropdowns.forEach((dropdown) => {
@@ -876,12 +874,7 @@ export default class MultilandingGenerator extends BaseGenerator {
           const rule = this.config.textReplacements[parentIndex].utmRules[ruleIndex];
           const dropdown = target as HTMLElement & { value: string };
 
-          if (dropdown.value === 'custom') {
-            rule.paramName = 'my_param';
-            // Показываем кастомное поле - пока не реализовано
-          } else {
-            rule.paramName = dropdown.value;
-          }
+          rule.paramName = dropdown.value;
         }
       }
 
@@ -893,12 +886,7 @@ export default class MultilandingGenerator extends BaseGenerator {
           const rule = this.config.blockVisibility[index];
           const dropdown = target as HTMLElement & { value: string };
 
-          if (dropdown.value === 'custom') {
-            rule.paramName = 'my_param';
-            // Показываем кастомное поле - пока не реализовано
-          } else {
-            rule.paramName = dropdown.value;
-          }
+          rule.paramName = dropdown.value;
         }
       }
     });
