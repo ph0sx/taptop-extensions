@@ -6,3 +6,24 @@
 :host *, :host *::before, :host *::after {
   box-sizing: inherit;
 }
+
+/* Custom scrollbar for all components */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #A9A9A9 transparent;
+}
+
+/* Webkit browsers (Chrome, Safari, Edge) */
+*::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--grey-500, #A9A9A9);
+  border-radius: 95px;
+}
