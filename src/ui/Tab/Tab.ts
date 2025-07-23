@@ -68,6 +68,7 @@ export class Tab extends HTMLElement {
           position: relative;
           text-align: center;
           transition: color 0.2s ease;
+          white-space: nowrap;
         }
 
         .tab.active {

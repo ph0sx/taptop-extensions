@@ -4,6 +4,15 @@
   border-bottom: 1px solid #eee;
   gap: 24px;
   padding: 14px 16px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  /* Hide scrollbar */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.tabs-container::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Webkit */
 }
 
 :host {
