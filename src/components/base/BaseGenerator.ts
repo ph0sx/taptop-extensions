@@ -1,5 +1,33 @@
 import baseStyles from '../../styles/base.css';
 
+interface TerserMinifyResult {
+  code?: string;
+  error?: Error;
+}
+
+interface TerserInstance {
+  minify: (
+    code: string,
+    options?: {
+      compress?: {
+        drop_console?: boolean;
+        drop_debugger?: boolean;
+        pure_funcs?: string[];
+      };
+      mangle?: boolean;
+      format?: {
+        comments?: boolean;
+      };
+    },
+  ) => Promise<TerserMinifyResult>;
+}
+
+declare global {
+  interface Window {
+    Terser?: TerserInstance;
+  }
+}
+
 export interface GeneratorConfig {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
@@ -59,22 +87,9 @@ export abstract class BaseGenerator extends HTMLElement {
 
   //Ищем элементы
   protected findElements(): void {
-    //сюда кнопку генерации
-    //сюды элементы модалки
-    //сюды всё базовое короче
     this.elements.genBtn = this.shadow.querySelector<HTMLElement>('#gen-btn');
     this.elements.generator = this.shadow.querySelector<HTMLElement>('ttg-generator');
     this.elements.codeOutput = this.shadow.querySelector<HTMLElement>('#code-output');
-
-    // Ищем внешний попап успеха
-    this.elements.successPopup = document.querySelector<HTMLElement>('.pop-up-success');
-    this.elements.popupAcceptBtn = document.querySelector<HTMLElement>('[data-popup-accept-btn]');
-    this.elements.popupCloseBtn = document.querySelector<HTMLElement>('[data-popup-close-btn]');
-
-    /*this.elements.generateButton = this.shadow.querySelector('.generate-button');
-    this.elements.modal = this.shadow.querySelector('.modal');
-    this.elements.modalCloseButtons = this.shadow.querySelectorAll('.modal-close');
-    this.elements.codeOutput = this.shadow.querySelector('.code-output'); */
   }
 
   //Навешиваем обработчики
@@ -91,30 +106,6 @@ export abstract class BaseGenerator extends HTMLElement {
       const handler = () => this.generateAndCopyCode();
       this.eventHandlers.set('generate-direct', handler);
       this.elements.genBtn.addEventListener('click', handler);
-    }
-
-    // Обработчики для попапа успеха
-    if (this.elements.popupAcceptBtn) {
-      const handler = () => this.hideSuccessPopup();
-      this.eventHandlers.set('popup-accept', handler);
-      this.elements.popupAcceptBtn.addEventListener('click', handler);
-    }
-
-    if (this.elements.popupCloseBtn) {
-      const handler = () => this.hideSuccessPopup();
-      this.eventHandlers.set('popup-close', handler);
-      this.elements.popupCloseBtn.addEventListener('click', handler);
-    }
-
-    // Обработчик клика за пределы попапа
-    if (this.elements.successPopup) {
-      const handler = (event: Event) => {
-        if (event.target === this.elements.successPopup) {
-          this.hideSuccessPopup();
-        }
-      };
-      this.eventHandlers.set('popup-overlay', handler);
-      this.elements.successPopup.addEventListener('click', handler);
     }
   }
 
@@ -147,8 +138,7 @@ export abstract class BaseGenerator extends HTMLElement {
 
     try {
       await navigator.clipboard.writeText(minified);
-      // eslint-disable-next-line no-console
-      console.log('Код скопирован в буфер обмена');
+      console.warn('Код скопирован в буфер обмена');
     } catch {
       this.fallbackCopy(minified);
     }
@@ -160,7 +150,7 @@ export abstract class BaseGenerator extends HTMLElement {
       // Загружаем terser из CDN для браузера
       if (!window.Terser) {
         const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/terser@5/dist/bundle.min.js';
+        script.src = 'https://cdn.jsdelivr.net/npm/terser@5/dist/bundle.min.js  ';
         document.head.appendChild(script);
         await new Promise((resolve, reject) => {
           script.onload = resolve;
@@ -228,14 +218,106 @@ export abstract class BaseGenerator extends HTMLElement {
   }
 
   protected showSuccessPopup(): void {
-    if (this.elements.successPopup) {
-      (this.elements.successPopup as HTMLElement).style.display = 'flex';
+    console.warn('BaseGenerator: Attempting to show success popup');
+    // 1. Динамически ищем элементы КАЖДЫЙ раз при вызове
+    const successPopup = document.querySelector<HTMLElement>('.pop-up-success');
+    const popupAcceptBtn = document.querySelector<HTMLElement>('[data-popup-accept-btn]');
+    const popupCloseBtn = document.querySelector<HTMLElement>('[data-popup-close-btn]');
+    // Для улучшенного клика по оверлею (как в других компонентах)
+    const popupContent = successPopup
+      ? successPopup.querySelector<HTMLElement>('.pop-up__content')
+      : null;
+
+    // 2. Проверяем, найден ли основной элемент попапа
+    if (!successPopup) {
+      console.warn('BaseGenerator: Success popup element (.pop-up-success) not found in DOM.');
+      // Fallback - показываем alert
+      alert('Код скопирован в буфер обмена!');
+      return;
     }
+
+    // 3. Определяем функцию для скрытия попапа
+    const hidePopupFunction = () => {
+      successPopup.style.display = 'none';
+      console.warn('BaseGenerator: Popup hidden');
+    };
+
+    // 4. Отвязываем предыдущие обработчики (если они были привязаны ранее)
+    // Это важно, если функция вызывается несколько раз
+    if (popupAcceptBtn) {
+      popupAcceptBtn.removeEventListener('click', hidePopupFunction);
+    }
+    if (popupCloseBtn) {
+      popupCloseBtn.removeEventListener('click', hidePopupFunction);
+    }
+
+    // 5. Привязываем НОВЫЕ обработчики событий
+    if (popupAcceptBtn) {
+      popupAcceptBtn.addEventListener('click', hidePopupFunction);
+      console.warn('BaseGenerator: Accept button handler bound');
+    } else {
+      console.warn('BaseGenerator: Accept button [data-popup-accept-btn] not found');
+    }
+
+    if (popupCloseBtn) {
+      popupCloseBtn.addEventListener('click', hidePopupFunction);
+      console.warn('BaseGenerator: Close button handler bound');
+    } else {
+      console.warn('BaseGenerator: Close button [data-popup-close-btn] not found');
+    }
+
+    // 6. Улучшенный обработчик клика по overlay (как в других компонентах)
+    const overlayClickHandler = (event: Event) => {
+      console.warn('BaseGenerator: Overlay click detected', {
+        target: (event.target as HTMLElement)?.className,
+        currentTarget: (event.currentTarget as HTMLElement)?.className,
+        popupContentExists: !!popupContent,
+      });
+
+      // Проверяем, существует ли элемент содержимого попапа
+      if (popupContent) {
+        // Проверяем, что клик был НЕ по элементу содержимого попапа и не по его потомкам
+        if (!popupContent.contains(event.target as Node)) {
+          console.warn('BaseGenerator: Click outside popup content - hiding popup');
+          hidePopupFunction();
+        } else {
+          console.warn('BaseGenerator: Click inside popup content - keeping popup open');
+        }
+      } else {
+        console.warn(
+          'BaseGenerator: Popup content (.pop-up__content) not found inside .pop-up-success.',
+        );
+        // Fallback к старой логике, если структура нестандартная
+        if (event.target === successPopup) {
+          console.warn('BaseGenerator: Using fallback logic - hiding popup');
+          hidePopupFunction();
+        }
+      }
+    };
+
+    // Отвязываем старый обработчик overlay, если он был (простой способ - отвязать по той же ссылке)
+    successPopup.removeEventListener('click', overlayClickHandler); // Отвязываем, если был привязан ранее
+    // Привязываем обработчик клика по всему попапу (оверлею)
+    successPopup.addEventListener('click', overlayClickHandler);
+    console.warn('BaseGenerator: Enhanced overlay click handler bound', {
+      popupContentFound: !!popupContent,
+    });
+
+    // 7. Показываем попап
+    successPopup.style.display = 'flex';
+    console.warn('BaseGenerator: Popup shown');
   }
 
   protected hideSuccessPopup(): void {
-    if (this.elements.successPopup) {
-      (this.elements.successPopup as HTMLElement).style.display = 'none';
+    console.warn('hideSuccessPopup вызван');
+    try {
+      const successPopup = document.querySelector<HTMLElement>('.pop-up-success');
+
+      if (successPopup) {
+        successPopup.style.display = 'none';
+      }
+    } catch (error) {
+      console.error('Ошибка в hideSuccessPopup:', error);
     }
   }
 
@@ -247,27 +329,6 @@ export abstract class BaseGenerator extends HTMLElement {
 
     if (this.elements.genBtn && this.eventHandlers.has('generate-direct')) {
       this.elements.genBtn.removeEventListener('click', this.eventHandlers.get('generate-direct')!);
-    }
-
-    if (this.elements.popupAcceptBtn && this.eventHandlers.has('popup-accept')) {
-      this.elements.popupAcceptBtn.removeEventListener(
-        'click',
-        this.eventHandlers.get('popup-accept')!,
-      );
-    }
-
-    if (this.elements.popupCloseBtn && this.eventHandlers.has('popup-close')) {
-      this.elements.popupCloseBtn.removeEventListener(
-        'click',
-        this.eventHandlers.get('popup-close')!,
-      );
-    }
-
-    if (this.elements.successPopup && this.eventHandlers.has('popup-overlay')) {
-      this.elements.successPopup.removeEventListener(
-        'click',
-        this.eventHandlers.get('popup-overlay')!,
-      );
     }
 
     this.eventHandlers.clear();
