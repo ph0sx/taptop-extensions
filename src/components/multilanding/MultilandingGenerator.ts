@@ -48,6 +48,10 @@ export default class MultilandingGenerator extends BaseGenerator {
   private tabsComponent: HTMLElement | null = null;
   private tabContents: HTMLElement[] = [];
   private countriesModal: HTMLElement | null = null;
+
+  // Новая простая система валидации
+  private validationMode: 'initial' | 'active' = 'initial';
+  private validationErrors: Map<string, string> = new Map();
   protected config: MultilandingConfig = {
     textReplacements: [
       {
@@ -208,6 +212,9 @@ export default class MultilandingGenerator extends BaseGenerator {
 
     // Активируем первый таб
     this.switchTab(this.activeTab);
+
+    // Устанавливаем начальное состояние валидации
+    this.switchToInitialMode();
   }
 
   private switchTab(tabId: string): void {
@@ -244,6 +251,8 @@ export default class MultilandingGenerator extends BaseGenerator {
       ],
     });
     this.renderTextReplacements();
+    // Переключаемся в initial режим после добавления нового правила
+    setTimeout(() => this.switchToInitialMode(), 0);
   }
 
   private addBlockRule(): void {
@@ -254,6 +263,8 @@ export default class MultilandingGenerator extends BaseGenerator {
       hideBlocks: [],
     });
     this.renderBlockVisibility();
+    // Переключаемся в initial режим после добавления нового правила
+    setTimeout(() => this.switchToInitialMode(), 0);
   }
 
   private addIpRule(): void {
@@ -266,6 +277,8 @@ export default class MultilandingGenerator extends BaseGenerator {
       hideBlocks: [],
     });
     this.renderIpRules();
+    // Переключаемся в initial режим после добавления нового правила
+    setTimeout(() => this.switchToInitialMode(), 0);
   }
 
   private renderTextReplacements(): void {
@@ -722,6 +735,8 @@ export default class MultilandingGenerator extends BaseGenerator {
             replacementValue: '',
           });
           this.renderTextReplacements();
+          // Переключаемся в initial режим после добавления нового UTM правила
+          setTimeout(() => this.switchToInitialMode(), 0);
           break;
         case 'remove-utm-rule':
           // Сохраняем текущие данные перед удалением правила
@@ -736,6 +751,8 @@ export default class MultilandingGenerator extends BaseGenerator {
             replacementValue: '',
           });
           this.renderIpRules();
+          // Переключаемся в initial режим после добавления новой IP текстовой замены
+          setTimeout(() => this.switchToInitialMode(), 0);
           break;
         case 'remove-ip-text-replacement':
           this.config.ipRules[parentIndex].textReplacements.splice(repIndex, 1);
@@ -891,6 +908,138 @@ export default class MultilandingGenerator extends BaseGenerator {
       }
     });
   }
+
+  // === НОВАЯ ПРОСТАЯ СИСТЕМА ВАЛИДАЦИИ ===
+
+  private validateForm(): boolean {
+    this.validationErrors.clear();
+
+    // Находим все required поля в Shadow DOM
+    const requiredInputs = this.shadow.querySelectorAll('ttg-input[required]');
+
+    requiredInputs.forEach((input) => {
+      const inputElement = input as HTMLElement & { value: string; name?: string };
+      const fieldName = inputElement.name || inputElement.getAttribute('data-field') || 'unknown';
+      const value = inputElement.value?.trim() || '';
+
+      if (!value) {
+        this.validationErrors.set(fieldName, 'Обязательное поле');
+      }
+    });
+
+    // Также проверяем required dropdown'ы
+    const requiredDropdowns = this.shadow.querySelectorAll('ttg-dropdown[required]');
+
+    requiredDropdowns.forEach((dropdown) => {
+      const dropdownElement = dropdown as HTMLElement & { value: string; name?: string };
+      const fieldName =
+        dropdownElement.name || dropdownElement.getAttribute('data-field') || 'unknown';
+      const value = dropdownElement.value?.trim() || '';
+
+      if (!value) {
+        this.validationErrors.set(fieldName, 'Обязательное поле');
+      }
+    });
+
+    return this.validationErrors.size === 0;
+  }
+
+  private switchToActiveMode(): void {
+    this.validationMode = 'active';
+    this.bindLiveValidation();
+  }
+
+  private switchToInitialMode(): void {
+    this.validationMode = 'initial';
+    this.validationErrors.clear();
+    this.clearAllFieldErrors();
+    this.updateButtonState();
+  }
+
+  private showValidationErrors(): void {
+    if (this.validationMode === 'initial') return;
+
+    // Очищаем все предыдущие ошибки
+    this.clearAllFieldErrors();
+
+    // Показываем только текущие ошибки
+    this.validationErrors.forEach((errorMessage, fieldName) => {
+      this.showFieldError(fieldName, errorMessage);
+    });
+  }
+
+  private showFieldError(fieldName: string, errorMessage: string): void {
+    // Ищем поле по имени или data-field атрибуту
+    const field = this.shadow.querySelector(`[name="${fieldName}"], [data-field="${fieldName}"]`);
+
+    if (field && 'setError' in field && typeof field.setError === 'function') {
+      field.setError(errorMessage);
+    }
+  }
+
+  private clearAllFieldErrors(): void {
+    // Очищаем ошибки во всех ttg-input элементах
+    const allInputs = this.shadow.querySelectorAll('ttg-input');
+    allInputs.forEach((input) => {
+      if ('clearError' in input && typeof input.clearError === 'function') {
+        input.clearError();
+      }
+    });
+
+    // Очищаем ошибки во всех ttg-dropdown элементах
+    const allDropdowns = this.shadow.querySelectorAll('ttg-dropdown');
+    allDropdowns.forEach((dropdown) => {
+      if ('clearError' in dropdown && typeof dropdown.clearError === 'function') {
+        dropdown.clearError();
+      }
+    });
+  }
+
+  private updateButtonState(): void {
+    // В initial режиме кнопка всегда активна
+    if (this.validationMode === 'initial') {
+      this.setButtonEnabled(true);
+      return;
+    }
+
+    // В active режиме кнопка зависит от валидности формы
+    const isValid = this.validateForm();
+    this.setButtonEnabled(isValid);
+
+    // Показываем ошибки если есть
+    if (!isValid) {
+      this.showValidationErrors();
+    }
+  }
+
+  private setButtonEnabled(enabled: boolean): void {
+    const button = this.shadow.querySelector('#gen-btn') as HTMLButtonElement;
+    if (button) {
+      button.disabled = !enabled;
+    }
+  }
+
+  private bindLiveValidation(): void {
+    // Привязываем живую валидацию ко всем полям
+    const allInputs = this.shadow.querySelectorAll('ttg-input, ttg-dropdown');
+
+    allInputs.forEach((input) => {
+      // Удаляем старые обработчики если есть
+      input.removeEventListener('input', this.handleLiveValidation);
+      input.removeEventListener('change', this.handleLiveValidation);
+
+      // Добавляем новые обработчики
+      input.addEventListener('input', this.handleLiveValidation);
+      input.addEventListener('change', this.handleLiveValidation);
+    });
+  }
+
+  private handleLiveValidation = (): void => {
+    if (this.validationMode === 'active') {
+      // Небольшая задержка для debounce
+      setTimeout(() => this.updateButtonState(), 100);
+    }
+  };
 
   protected unbindEvents(): void {
     super.unbindEvents();
@@ -1074,41 +1223,25 @@ export default class MultilandingGenerator extends BaseGenerator {
     // Сохраняем текущие данные из формы
     this.saveCurrentFormData();
 
-    // Валидация текстовых замен
-    for (const replacement of this.config.textReplacements) {
-      if (!replacement.keyword || !replacement.defaultValue) {
-        alert('Заполните все обязательные поля в разделе "Замена текста"');
-        return null;
-      }
+    // Если мы в initial режиме, переключаемся в active и проверяем валидность
+    if (this.validationMode === 'initial') {
+      this.switchToActiveMode();
 
-      for (const utmRule of replacement.utmRules) {
-        if (!utmRule.paramName || !utmRule.paramValue || !utmRule.replacementValue) {
-          alert('Заполните все поля UTM правил в разделе "Замена текста"');
-          return null;
-        }
+      // Выполняем валидацию
+      const isValid = this.validateForm();
+      this.updateButtonState(); // Обновляем состояние кнопки и показываем ошибки
+
+      if (!isValid) {
+        return null; // Прерываем генерацию если есть ошибки
       }
     }
 
-    // Валидация правил блоков
-    for (const rule of this.config.blockVisibility) {
-      if (!rule.paramName || !rule.paramValue) {
-        alert('Заполните все обязательные поля в разделе "Управление блоками"');
+    // Если мы в active режиме, просто проверяем валидность
+    if (this.validationMode === 'active') {
+      const isValid = this.validateForm();
+      if (!isValid) {
+        this.updateButtonState(); // Показываем ошибки
         return null;
-      }
-    }
-
-    // Валидация IP правил
-    for (const rule of this.config.ipRules) {
-      if (!rule.country) {
-        alert('Укажите страну в разделе "Правила по IP"');
-        return null;
-      }
-
-      for (const textRep of rule.textReplacements) {
-        if (!textRep.keyword || !textRep.defaultValue || !textRep.replacementValue) {
-          alert('Заполните все поля текстовых замен в разделе "Правила по IP"');
-          return null;
-        }
       }
     }
 
