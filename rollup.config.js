@@ -2,9 +2,11 @@ import terser from '@rollup/plugin-terser';
 import typescript from '@rollup/plugin-typescript';
 import postcss from 'rollup-plugin-postcss';
 import cssnano from 'cssnano';
+import resolve from '@rollup/plugin-node-resolve';
 
 // Общая конфигурация для плагинов
 const commonPlugins = [
+  resolve({ browser: true }),
   postcss({
     extract: false,
     inject: false,
@@ -34,7 +36,7 @@ const commonPlugins = [
 
 // Основная сборка со всеми компонентами
 const mainBuild = {
-  input: 'src/main.ts',
+  input: 'src/entries/main.ts',
   output: {
     file: 'dist/index.js',
     format: 'iife',
@@ -44,7 +46,7 @@ const mainBuild = {
 
 // Отдельные генераторы в ESM формате для оптимальной загрузки
 const cookieGeneratorBuild = {
-  input: 'src/components/cookie/CookieGenerator.ts',
+  input: 'src/entries/entry‑cookie‑generator.ts',
   output: {
     file: 'dist/cookie-generator.js',
     format: 'es',
@@ -54,7 +56,7 @@ const cookieGeneratorBuild = {
 };
 
 const multilandingGeneratorBuild = {
-  input: 'src/components/multilanding/MultilandingGenerator.ts',
+  input: 'src/entries/entry-multilanding-generator.ts',
   output: {
     file: 'dist/multilanding-generator.js',
     format: 'es',
