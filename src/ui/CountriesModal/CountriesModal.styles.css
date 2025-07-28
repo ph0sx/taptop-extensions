@@ -18,7 +18,9 @@
 .ttg-countries-modal {
   background: white;
   border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
   max-width: 700px;
   width: 100%;
   max-height: 80vh;
@@ -43,7 +45,14 @@
   font-size: 18px;
   font-weight: 600;
   color: var(--ttg-color-text-black, #333);
-  font-family: var(--ttg-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  font-family: var(
+    --ttg-font-family,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif
+  );
 }
 
 .ttg-countries-modal-close {
@@ -85,7 +94,14 @@
   color: var(--ttg-color-text-gray-700, #6b7280);
   font-size: 14px;
   line-height: 1.5;
-  font-family: var(--ttg-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  font-family: var(
+    --ttg-font-family,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif
+  );
 }
 
 /* Search input */
@@ -112,7 +128,14 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
-  font-family: var(--ttg-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  font-family: var(
+    --ttg-font-family,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif
+  );
 }
 
 .ttg-countries-modal-table thead {
@@ -165,7 +188,14 @@
   color: var(--ttg-color-text-gray-600, #6b7280);
   font-size: 13px;
   line-height: 1.5;
-  font-family: var(--ttg-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  font-family: var(
+    --ttg-font-family,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif
+  );
   font-style: italic;
 }
 
@@ -187,7 +217,14 @@
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  font-family: var(--ttg-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  font-family: var(
+    --ttg-font-family,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif
+  );
 }
 
 .ttg-countries-modal-close-btn:hover {
@@ -210,14 +247,14 @@
     margin: 10px;
     max-height: calc(100vh - 40px);
   }
-  
+
   .ttg-countries-modal-header,
   .ttg-countries-modal-content,
   .ttg-countries-modal-footer {
     padding-left: 16px;
     padding-right: 16px;
   }
-  
+
   .ttg-countries-modal-table th,
   .ttg-countries-modal-table td {
     padding: 8px 12px;

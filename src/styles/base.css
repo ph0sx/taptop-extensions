@@ -3,14 +3,16 @@
   box-sizing: border-box;
 }
 
-:host *, :host *::before, :host *::after {
+:host *,
+:host *::before,
+:host *::after {
   box-sizing: inherit;
 }
 
 /* Custom scrollbar for all components */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #A9A9A9 transparent;
+  scrollbar-color: #a9a9a9 transparent;
 }
 
 /* Webkit browsers (Chrome, Safari, Edge) */
@@ -24,6 +26,6 @@
 }
 
 *::-webkit-scrollbar-thumb {
-  background: var(--grey-500, #A9A9A9);
+  background: var(--grey-500, #a9a9a9);
   border-radius: 95px;
 }

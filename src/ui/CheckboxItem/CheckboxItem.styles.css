@@ -32,8 +32,12 @@
 
 /* CHECKBOX LABEL TEXT */
 .ttg-checkbox-label-text {
-  color: var(--grey-700, #8B8B8B);
-  font-feature-settings: 'ss11' on, 'cv09' on, 'liga' off, 'calt' off;
+  color: var(--grey-700, #8b8b8b);
+  font-feature-settings:
+    'ss11' on,
+    'cv09' on,
+    'liga' off,
+    'calt' off;
   font-family: Inter;
   font-size: 14px;
   font-style: normal;
@@ -60,5 +64,5 @@
 }
 
 .ttg-checkbox-item.disabled .ttg-checkbox-label:hover .ttg-checkbox-label-text {
-  color: var(--grey-700, #8B8B8B);
+  color: var(--grey-700, #8b8b8b);
 }
