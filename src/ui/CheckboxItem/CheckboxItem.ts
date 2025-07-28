@@ -1,7 +1,7 @@
 import baseStyles from '../../styles/base.css';
 import checkboxItemStyles from './CheckboxItem.styles.css';
 import { template } from './CheckboxItem.template';
-import { generateUniqueId } from '../../utils/id';
+import { generateUniqueId } from '../../utils/generate-id';
 
 interface CheckboxItemElements {
   wrapper: HTMLElement | null;

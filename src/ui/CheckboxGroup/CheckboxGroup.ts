@@ -3,7 +3,7 @@ import checkboxGroupStyles from './CheckboxGroup.styles.css';
 import { template } from './CheckboxGroup.template';
 import '../Question/Question';
 import '../CheckboxItem/CheckboxItem';
-import { generateUniqueId } from '../../utils/id';
+import { generateUniqueId } from '../../utils/generate-id';
 
 interface CheckboxGroupElements {
   wrapper: HTMLElement | null;
