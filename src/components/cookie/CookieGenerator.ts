@@ -1,59 +1,62 @@
+import { html, type TemplateResult } from 'lit';
+import { query } from 'lit/decorators.js';
+import { BaseGenerator } from '../base/BaseGenerator.js';
 import type { Input } from '../../ui/Input/Input';
-import type { GeneratorConfig, GeneratorElements } from '../base/BaseGenerator';
-import { BaseGenerator } from '../base/BaseGenerator';
-import { initGlobalStyles } from '../../utils/global-styles';
-import cookieGeneratorStyles from './CookieGenerator.styles.css';
-import { template } from './CookieGenerator.template';
+import type { GeneratorConfig } from '../base/BaseGenerator';
 
-interface CookieGeneratorElements extends GeneratorElements {
-  expiryDays: Input | null;
-}
+// Импорты для UI компонентов
+import '../../ui/Generator/Generator';
+import '../../ui/GeneratorSection/GeneratorSection';
+import '../../ui/Input/Input';
 
 export default class CookieGenerator extends BaseGenerator {
-  protected elements = {} as CookieGeneratorElements;
+  // DOM элементы
+  @query('#expiry-days')
+  private expiryDaysInput?: Input;
 
   constructor() {
     super();
-    // Инициализируем глобальные стили при создании компонента
-    initGlobalStyles();
-    this.config = {
+  }
+
+  // Рендер содержимого компонента
+  protected renderContent(): TemplateResult {
+    return html`
+      <ttg-generator>
+        <ttg-generator-section label="Основные настройки">
+          <ttg-input
+            id="expiry-days"
+            label="Срок хранения (дней)"
+            type="number"
+            tooltip="Количество дней, в течение которых будет сохраняться согласие пользователя на использование cookie"
+            required
+            min="1"
+            max="365"
+            .value="30"
+          >
+          </ttg-input>
+        </ttg-generator-section>
+      </ttg-generator>
+    `;
+  }
+
+  // Сбор данных из формы
+  protected collectData(): GeneratorConfig | null {
+    const expiryDays = parseInt(this.expiryDaysInput?.value || '30', 10);
+
+    if (isNaN(expiryDays) || expiryDays < 1 || expiryDays > 365) {
+      console.error('Некорректное значение срока хранения');
+      return null;
+    }
+
+    return {
       cookieName: 'cookieAgreement',
-      expiryDays: 30,
+      expiryDays,
       closeBtnClass: 'pop-up__inside-close-button',
       overlayClass: 'pop-up__overlay',
     };
   }
 
-  protected getStyles(): string {
-    return cookieGeneratorStyles;
-  }
-
-  protected getTemplate(): string {
-    return template;
-  }
-
-  protected findElements(): void {
-    super.findElements();
-    this.elements.expiryDays = this.shadow.querySelector<Input>('#expiry-days');
-  }
-
-  protected setInitialState(): void {
-    if (this.elements.expiryDays) {
-      this.elements.expiryDays.value = String(this.config.expiryDays);
-    }
-  }
-
-  protected collectData(): GeneratorConfig | null {
-    const { cookieName, closeBtnClass, overlayClass } = this.config;
-
-    return {
-      cookieName,
-      expiryDays: parseInt(this.elements.expiryDays?.value || '30', 10) || this.config.expiryDays,
-      closeBtnClass,
-      overlayClass,
-    };
-  }
-
+  // Генерация кода для cookie баннера
   protected generateCode(settings: GeneratorConfig): string {
     return /* html */ `
 <script>
