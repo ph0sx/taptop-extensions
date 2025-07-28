@@ -9,6 +9,11 @@
   box-sizing: inherit;
 }
 
+:host {
+  display: block;
+  font-family: var(--font-family-primary, system-ui, sans-serif);
+}
+
 /* Custom scrollbar for all components */
 * {
   scrollbar-width: thin;
