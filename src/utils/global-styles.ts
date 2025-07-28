@@ -16,3 +16,5 @@ export function initGlobalStyles(): void {
 
   document.head.appendChild(style);
 }
+
+initGlobalStyles();

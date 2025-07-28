@@ -2,7 +2,7 @@ import baseStyles from '../../styles/base.css';
 import dropdownStyles from './Dropdown.styles.css';
 import { template } from './Dropdown.template';
 import '../Question/Question';
-import { generateUniqueId } from '../../utils/id';
+import { generateUniqueId } from '../../utils/generate-id';
 
 interface DropdownElements {
   wrapper: HTMLElement | null;

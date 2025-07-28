@@ -2,7 +2,7 @@ import baseStyles from '../../styles/base.css';
 import inputStyles from './Input.styles.css';
 import { template } from './Input.template';
 import '../Question/Question';
-import { generateUniqueId } from '../../utils/id';
+import { generateUniqueId } from '../../utils/generate-id';
 
 interface InputElements {
   wrapper: HTMLElement | null;
