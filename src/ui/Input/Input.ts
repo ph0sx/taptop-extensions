@@ -1,361 +1,296 @@
+import { LitElement, html, unsafeCSS, type TemplateResult } from 'lit';
+import { property, state } from 'lit/decorators.js';
 import baseStyles from '../../styles/base.css';
 import inputStyles from './Input.styles.css';
-import { template } from './Input.template';
 import '../Question/Question';
 import { generateUniqueId } from '../../utils/generate-id';
 
-interface InputElements {
-  wrapper: HTMLElement | null;
-  label: HTMLLabelElement | null;
-  input: HTMLInputElement | null;
-  errorMessage: HTMLElement | null;
-  actionButton: HTMLButtonElement | null;
-  inputField: HTMLElement | null;
-}
+/**
+ * Презентационный компонент ввода
+ *
+ * @element ttg-input
+ *
+ * @attr {string} label - Текст метки поля
+ * @attr {string} value - Значение поля
+ * @attr {string} type - Тип поля ввода (text, number, email, etc.)
+ * @attr {string} error - Текст ошибки валидации (отображается, если передан)
+ * @attr {boolean} disabled - Отключено ли поле
+ * @attr {string} placeholder - Текст подсказки
+ * @attr {boolean} required - Обязательно ли поле для заполнения
+ * @attr {string} tooltip - Текст всплывающей подсказки
+ * @attr {string} min - Минимальное значение
+ * @attr {string} max - Максимальное значение
+ * @attr {boolean} show-action-button - Показывать ли кнопку действия
+ * @attr {string} action-tooltip - Подсказка для кнопки действия
+ *
+ * @fires update-value - Событие изменения значения с новым значением в detail.value
+ * @fires field-blur - Событие потери фокуса
+ * @fires action-click - Событие клика по кнопке действия
+ */
+export class Input extends LitElement {
+  // Реактивные свойства
+  @property({ type: String })
+  accessor label = '';
 
-export class Input extends HTMLElement {
-  private elements: InputElements = {
-    wrapper: null,
-    label: null,
-    input: null,
-    errorMessage: null,
-    actionButton: null,
-    inputField: null,
-  };
+  @property({ type: String })
+  accessor value = '';
 
-  private touched = false;
-  private userStartedTyping = false;
+  @property({ type: String })
+  accessor type = 'text';
+
+  @property({ type: String })
+  accessor error = '';
+
+  @property({ type: Boolean })
+  accessor disabled = false;
+
+  @property({ type: String })
+  accessor placeholder = '';
+
+  @property({ type: Boolean })
+  accessor required = false;
+
+  @property({ type: String })
+  accessor tooltip = '';
+
+  @property({ type: String })
+  accessor min = '';
+
+  @property({ type: String })
+  accessor max = '';
+
+  @property({ type: Boolean, attribute: 'show-action-button' })
+  accessor showActionButton = false;
+
+  @property({ type: String, attribute: 'action-tooltip' })
+  accessor actionTooltip = '';
+
+  @state()
+  private accessor touched = false;
+
   private uniqueId = generateUniqueId('ttg-input');
 
-  static get observedAttributes() {
-    return [
-      'label',
-      'value',
-      'type',
-      'error',
-      'disabled',
-      'placeholder',
-      'required',
-      'tooltip',
-      'min',
-      'max',
-      'show-action-button',
-      'action-tooltip',
-    ];
+  /**
+   * Получает ID для внутреннего input элемента
+   * Использует переданный ID компонента или fallback на uniqueId
+   */
+  private getInputId(): string {
+    return this.id || this.uniqueId;
   }
+
+  static styles = [unsafeCSS(baseStyles), unsafeCSS(inputStyles)];
 
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
-    this.shadowRoot!.innerHTML = `<style>${baseStyles}${inputStyles}</style>${template}`;
-
-    this.elements.wrapper = this.shadowRoot!.querySelector('.ttg-input-wrapper');
-    this.elements.label = this.shadowRoot!.querySelector('label');
-    this.elements.input = this.shadowRoot!.querySelector('.ttg-input-control');
-    this.elements.errorMessage = this.shadowRoot!.querySelector('.ttg-input-error-text');
-    this.elements.actionButton = this.shadowRoot!.querySelector('.ttg-input-action-button');
-    this.elements.inputField = this.shadowRoot!.querySelector('.ttg-input-field');
-
-    // Устанавливаем связь между label и input
-    if (this.elements.input) {
-      this.elements.input.id = this.uniqueId;
-    }
-    if (this.elements.label) {
-      this.elements.label.setAttribute('for', this.uniqueId);
-    }
   }
 
-  get value() {
-    return this.elements.input?.value || '';
+  /**
+   * Рендерит SVG иконку поиска для кнопки действия
+   * @returns Шаблон SVG иконки
+   */
+  private renderSearchIcon(): TemplateResult {
+    return html`
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z"
+          stroke="#6B7280"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    `;
   }
 
-  set value(val: string) {
-    if (this.elements.input) {
-      this.elements.input.value = val;
-    }
+  /**
+   * Рендерит SVG иконку ошибки
+   * @returns Шаблон SVG иконки
+   */
+  private renderErrorIcon(): TemplateResult {
+    return html`
+      <svg
+        class="ttg-input-error-icon"
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 20 20"
+        fill="none"
+      >
+        <path
+          fill-rule="evenodd"
+          clip-rule="evenodd"
+          d="M2.5 10C2.5 5.85787 5.85787 2.5 10 2.5C14.1422 2.5 17.5 5.85787 17.5 10C17.5 14.1422 14.1422 17.5 10 17.5C5.85787 17.5 2.5 14.1422 2.5 10ZM10 5.98837C10.289 5.98837 10.5233 6.22264 10.5233 6.51163V10.6977C10.5233 10.9867 10.289 11.2209 10 11.2209C9.71102 11.2209 9.47674 10.9867 9.47674 10.6977V6.51163C9.47674 6.22264 9.71102 5.98837 10 5.98837ZM10.3959 13.8378C10.5893 13.623 10.5718 13.2921 10.357 13.0988C10.1422 12.9055 9.81135 12.9228 9.61802 13.1377L9.61105 13.1454C9.41772 13.3602 9.43516 13.691 9.64998 13.8844C9.86479 14.0777 10.1956 14.0603 10.389 13.8455L10.3959 13.8378Z"
+          fill="#FF2B71"
+        />
+      </svg>
+    `;
   }
 
-  get hasError() {
-    return this.elements.wrapper?.classList.contains('error') || false;
+  /**
+   * Рендерит tooltip компонент если задан
+   * @returns Шаблон tooltip или пустая строка
+   */
+  private renderTooltip(): TemplateResult | string {
+    return this.tooltip
+      ? html`<ttg-question tooltip="${this.tooltip}" style="height: 16px;"></ttg-question>`
+      : '';
   }
 
-  setError(message: string) {
-    if (this.elements.errorMessage) {
-      this.elements.errorMessage.textContent = message;
-    }
-    if (this.elements.wrapper) {
-      this.elements.wrapper.classList.add('error');
-    }
-    this.setAttribute('error', message);
+  /**
+   * Вычисляет CSS классы для обёртки компонента
+   * @returns Строка с CSS классами
+   */
+  private getWrapperClasses(): string {
+    return `ttg-input-wrapper${this.error ? ' error' : ''}`;
   }
 
-  clearError() {
-    if (this.elements.errorMessage) {
-      this.elements.errorMessage.textContent = '';
-    }
-    if (this.elements.wrapper) {
-      this.elements.wrapper.classList.remove('error');
-    }
-    this.removeAttribute('error');
+  /**
+   * Вычисляет CSS классы для поля ввода
+   * @returns Строка с CSS классами
+   */
+  private getInputFieldClasses(): string {
+    return `ttg-input-field${this.showActionButton ? ' has-action-button' : ''}`;
   }
 
-  validate(): boolean {
-    const value = this.value.trim();
-    let isValid = true;
+  /**
+   * Основной метод рендеринга компонента
+   * @returns Шаблон компонента
+   */
+  render(): TemplateResult {
+    return html`
+      <div class="${this.getWrapperClasses()}">
+        <label for="${this.getInputId()}">
+          <span class="ttg-input-label">${this.label}</span>
+          ${this.required ? html`<span class="ttg-input-required">*</span>` : ''}
+          ${this.renderTooltip()}
+        </label>
+        <div class="${this.getInputFieldClasses()}">
+          ${this.renderInput()} ${this.renderActionButton()}
+        </div>
+        ${this.renderError()}
+      </div>
+    `;
+  }
 
-    if (this.hasAttribute('required') && !value) {
-      this.setError('Это поле обязательно для заполнения');
-      isValid = false;
-    } else if (this.elements.input?.type === 'number' && value) {
-      // Validate min/max for number inputs
-      const numValue = parseFloat(value);
+  /**
+   * Рендерит поле ввода
+   * @returns Шаблон поля ввода
+   */
+  private renderInput(): TemplateResult {
+    return html`
+      <input
+        id="${this.getInputId()}"
+        class="ttg-input-control"
+        type="${this.type}"
+        .value="${this.value}"
+        placeholder="${this.placeholder}"
+        ?disabled="${this.disabled}"
+        ?required="${this.required}"
+        min="${this.min}"
+        max="${this.max}"
+        @input="${this.handleInput}"
+        @blur="${this.handleBlur}"
+      />
+    `;
+  }
 
-      if (this.hasAttribute('min')) {
-        const minValue = parseFloat(this.getAttribute('min')!);
-        if (numValue < minValue) {
-          this.setError(`Значение должно быть не менее ${minValue}`);
-          isValid = false;
-        }
-      }
+  /**
+   * Рендерит кнопку действия если необходимо
+   * @returns Шаблон кнопки или пустая строка
+   */
+  private renderActionButton(): TemplateResult | string {
+    return this.showActionButton
+      ? html`
+          <button
+            class="ttg-input-action-button"
+            type="button"
+            title="${this.actionTooltip}"
+            @click="${this.handleActionClick}"
+          >
+            ${this.renderSearchIcon()}
+          </button>
+        `
+      : '';
+  }
 
-      if (this.hasAttribute('max')) {
-        const maxValue = parseFloat(this.getAttribute('max')!);
-        if (numValue > maxValue) {
-          this.setError(`Значение должно быть не более ${maxValue}`);
-          isValid = false;
-        }
-      }
-    } else if (this.elements.input?.type === 'time' && value) {
-      // Validate min/max for time inputs
-      if (this.hasAttribute('min')) {
-        const minTime = this.getAttribute('min')!;
-        if (value < minTime) {
-          this.setError(`Время должно быть не раньше ${minTime}`);
-          isValid = false;
-        }
-      }
+  /**
+   * Рендерит блок ошибки если есть ошибка
+   * @returns Шаблон ошибки или пустая строка
+   */
+  private renderError(): TemplateResult | string {
+    return this.error
+      ? html`
+          <div class="ttg-input-error">
+            ${this.renderErrorIcon()}
+            <span class="ttg-input-error-text">${this.error}</span>
+          </div>
+        `
+      : '';
+  }
 
-      if (this.hasAttribute('max')) {
-        const maxTime = this.getAttribute('max')!;
-        if (value > maxTime) {
-          this.setError(`Время должно быть не позже ${maxTime}`);
-          isValid = false;
-        }
-      }
-    } else if (this.elements.input?.type === 'date' && value) {
-      // Validate min/max for date inputs
-      if (this.hasAttribute('min')) {
-        const minDate = this.getAttribute('min')!;
-        if (value < minDate) {
-          this.setError(`Дата должна быть не раньше ${minDate}`);
-          isValid = false;
-        }
-      }
+  /**
+   * Проверяет, является ли элемент HTML input элементом
+   * @param element - Проверяемый элемент
+   * @returns true если элемент является HTMLInputElement
+   */
+  private isInputElement(element: EventTarget | null): element is HTMLInputElement {
+    return element instanceof HTMLInputElement;
+  }
 
-      if (this.hasAttribute('max')) {
-        const maxDate = this.getAttribute('max')!;
-        if (value > maxDate) {
-          this.setError(`Дата должна быть не позже ${maxDate}`);
-          isValid = false;
-        }
-      }
+  /**
+   * Обработчик события ввода текста
+   * @param e - Событие ввода
+   */
+  private handleInput = (e: Event) => {
+    if (!this.isInputElement(e.target)) {
+      return;
     }
 
-    if (isValid) {
-      this.clearError();
-    }
+    const target = e.target;
+    const newValue = target.value;
 
-    // Dispatch validation change event
+    // Отправляем событие с новым значением для родительского компонента
     this.dispatchEvent(
-      new CustomEvent('validation-change', {
-        detail: { isValid, value },
+      new CustomEvent('update-value', {
+        detail: { value: newValue },
         bubbles: true,
         composed: true,
       }),
     );
+  };
 
-    return isValid;
-  }
-
-  forceValidate(): boolean {
+  /**
+   * Обработчик события потери фокуса
+   */
+  private handleBlur = () => {
     this.touched = true;
-    this.userStartedTyping = true;
-    return this.validate();
-  }
 
-  connectedCallback() {
-    this.elements.input?.addEventListener('input', () => {
-      this.userStartedTyping = true;
+    // Сообщаем родительскому компоненту о потере фокуса
+    this.dispatchEvent(
+      new CustomEvent('field-blur', {
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  };
 
-      if (this.hasError) {
-        this.clearError();
-      }
-
-      this.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
-    });
-
-    this.elements.input?.addEventListener('blur', () => {
-      this.touched = true;
-
-      if (this.userStartedTyping || this.value.trim() || this.hasError) {
-        this.validate();
-      }
-    });
-
-    this.elements.input?.addEventListener('input', () => {
-      if (this.value.trim() && this.touched) {
-        setTimeout(() => this.validate(), 300);
-      }
-    });
-
-    // Action button event handler
-    this.elements.actionButton?.addEventListener('click', () => {
-      this.dispatchEvent(
-        new CustomEvent('action-click', {
-          bubbles: true,
-          composed: true,
-        }),
-      );
-    });
-
-    this.updateTooltip();
-    this.updateActionButton();
-  }
-
-  attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
-    switch (name) {
-      case 'label': {
-        const labelSpan = this.shadowRoot?.querySelector('.ttg-input-label');
-        if (labelSpan) {
-          labelSpan.textContent = newValue;
-        }
-        break;
-      }
-
-      case 'value':
-        if (this.elements.input) {
-          this.elements.input.value = newValue;
-        }
-        break;
-
-      case 'type':
-        if (this.elements.input) {
-          this.elements.input.type = newValue;
-        }
-        break;
-
-      case 'placeholder':
-        if (this.elements.input) {
-          this.elements.input.placeholder = newValue;
-        }
-        break;
-
-      case 'error':
-        if (newValue) {
-          if (this.elements.errorMessage) {
-            this.elements.errorMessage.textContent = newValue;
-          }
-          if (this.elements.wrapper) {
-            this.elements.wrapper.classList.add('error');
-          }
-        } else {
-          if (this.elements.errorMessage) {
-            this.elements.errorMessage.textContent = '';
-          }
-          if (this.elements.wrapper) {
-            this.elements.wrapper.classList.remove('error');
-          }
-        }
-        break;
-
-      case 'disabled':
-        if (this.elements.input) {
-          this.elements.input.disabled = this.hasAttribute('disabled');
-        }
-        break;
-
-      case 'required':
-        this.updateRequiredIndicator();
-        break;
-
-      case 'tooltip':
-        this.updateTooltip();
-        break;
-
-      case 'min':
-        if (this.elements.input) {
-          if (newValue) {
-            this.elements.input.setAttribute('min', newValue);
-          } else {
-            this.elements.input.removeAttribute('min');
-          }
-        }
-        break;
-
-      case 'max':
-        if (this.elements.input) {
-          if (newValue) {
-            this.elements.input.setAttribute('max', newValue);
-          } else {
-            this.elements.input.removeAttribute('max');
-          }
-        }
-        break;
-
-      case 'show-action-button':
-        this.updateActionButton();
-        break;
-
-      case 'action-tooltip':
-        this.updateActionButtonTooltip();
-        break;
-    }
-  }
-
-  private updateRequiredIndicator() {
-    const requiredSpan = this.shadowRoot?.querySelector('.ttg-input-required') as HTMLElement;
-    if (requiredSpan) {
-      requiredSpan.style.display = this.hasAttribute('required') ? 'inline' : 'none';
-    }
-  }
-
-  private updateTooltip() {
-    const questionElement = this.shadowRoot?.querySelector('ttg-question') as HTMLElement;
-    if (questionElement) {
-      const tooltipValue = this.getAttribute('tooltip');
-      if (tooltipValue) {
-        questionElement.style.display = 'block';
-        questionElement.setAttribute('tooltip', tooltipValue);
-      } else {
-        questionElement.style.display = 'none';
-      }
-    }
-  }
-
-  private updateActionButton() {
-    if (this.elements.actionButton && this.elements.inputField) {
-      const showActionButton = this.hasAttribute('show-action-button');
-
-      if (showActionButton) {
-        this.elements.actionButton.style.display = 'flex';
-        this.elements.inputField.classList.add('has-action-button');
-      } else {
-        this.elements.actionButton.style.display = 'none';
-        this.elements.inputField.classList.remove('has-action-button');
-      }
-    }
-  }
-
-  private updateActionButtonTooltip() {
-    if (this.elements.actionButton) {
-      const tooltipValue = this.getAttribute('action-tooltip');
-      if (tooltipValue) {
-        this.elements.actionButton.setAttribute('title', tooltipValue);
-      } else {
-        this.elements.actionButton.removeAttribute('title');
-      }
-    }
-  }
+  /**
+   * Обработчик клика по кнопке действия
+   */
+  private handleActionClick = () => {
+    this.dispatchEvent(
+      new CustomEvent('action-click', {
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  };
 }
 
 customElements.define('ttg-input', Input);
