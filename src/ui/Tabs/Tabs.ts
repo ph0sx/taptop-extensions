@@ -1,56 +1,39 @@
+import { LitElement, html, unsafeCSS, type TemplateResult } from 'lit';
+import { customElement, property, queryAssignedElements } from 'lit/decorators.js';
 import baseStyles from '../../styles/base.css';
 import tabsStyles from './Tabs.styles.css';
-import { tabsTemplate } from './Tabs.template';
+import type { Tab } from '../Tab/Tab.js';
 
-export class Tabs extends HTMLElement {
-  private shadow: ShadowRoot;
-  private _activeTab: string = '';
+@customElement('ttg-tabs')
+export class Tabs extends LitElement {
+  static styles = [unsafeCSS(baseStyles), unsafeCSS(tabsStyles)];
 
-  constructor() {
-    super();
-    this.shadow = this.attachShadow({ mode: 'open' });
-  }
+  @property({ type: String, attribute: 'active-tab' })
+  accessor activeTab = '';
 
-  get activeTab(): string {
-    return this._activeTab;
-  }
+  @queryAssignedElements({ selector: 'ttg-tab' })
+  private accessor tabs!: Tab[];
 
-  set activeTab(value: string) {
-    this._activeTab = value;
-    this.updateActiveTab();
-  }
-
-  connectedCallback() {
-    this.render();
-    this.setupEventListeners();
+  protected firstUpdated(): void {
     this.initializeActiveTab();
   }
 
-  disconnectedCallback() {
-    this.cleanup();
-  }
-
-  private render() {
-    this.shadow.innerHTML = `
-      <style>
-        ${baseStyles}
-        ${tabsStyles}
-      </style>
-      ${tabsTemplate}
+  protected render(): TemplateResult {
+    return html`
+      <div
+        class="tabs-container"
+        role="tablist"
+        @click="${this.handleTabClick}"
+        @keydown="${this.handleKeydown}"
+      >
+        <slot></slot>
+      </div>
     `;
   }
 
-  private setupEventListeners() {
-    this.addEventListener('click', this.handleTabClick.bind(this));
-  }
-
-  private cleanup() {
-    this.removeEventListener('click', this.handleTabClick.bind(this));
-  }
-
-  private handleTabClick(event: Event) {
+  private handleTabClick(event: Event): void {
     const target = event.target as HTMLElement;
-    const tabElement = target.closest('ttg-tab') as HTMLElement;
+    const tabElement = target.closest('ttg-tab') as Tab;
 
     if (tabElement && tabElement.dataset.tab) {
       event.preventDefault();
@@ -58,59 +41,102 @@ export class Tabs extends HTMLElement {
 
       const tabId = tabElement.dataset.tab;
       this.setActiveTab(tabId);
-
-      // Dispatch custom event for parent components to listen to
-      this.dispatchEvent(
-        new CustomEvent('tab-change', {
-          detail: { tabId },
-          bubbles: true,
-          composed: true,
-        }),
-      );
+      this.dispatchTabChangeEvent(tabId);
     }
   }
 
-  private setActiveTab(tabId: string) {
-    this._activeTab = tabId;
-    this.updateActiveTab();
+  private handleKeydown(event: KeyboardEvent): void {
+    const activeTabIndex = this.tabs.findIndex((tab) => tab.active);
+    let nextIndex = activeTabIndex;
+
+    switch (event.key) {
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        event.preventDefault();
+        nextIndex = activeTabIndex > 0 ? activeTabIndex - 1 : this.tabs.length - 1;
+        break;
+      case 'ArrowRight':
+      case 'ArrowDown':
+        event.preventDefault();
+        nextIndex = activeTabIndex < this.tabs.length - 1 ? activeTabIndex + 1 : 0;
+        break;
+      case 'Home':
+        event.preventDefault();
+        nextIndex = 0;
+        break;
+      case 'End':
+        event.preventDefault();
+        nextIndex = this.tabs.length - 1;
+        break;
+      default:
+        return;
+    }
+
+    const nextTab = this.tabs[nextIndex];
+    if (nextTab && nextTab.dataset.tab) {
+      this.setActiveTab(nextTab.dataset.tab);
+      nextTab.focus();
+      this.dispatchTabChangeEvent(nextTab.dataset.tab);
+    }
   }
 
-  private updateActiveTab() {
-    // Remove active attribute from all tabs
-    const tabs = this.querySelectorAll('ttg-tab');
-    tabs.forEach((tab) => {
-      tab.removeAttribute('active');
+  private setActiveTab(tabId: string): void {
+    if (!this.isValidTabId(tabId)) {
+      console.warn(`Tab with id "${tabId}" not found`);
+      return;
+    }
+    this.activeTab = tabId;
+  }
+
+  private isValidTabId(tabId: string): boolean {
+    return this.tabs.some((tab) => tab.dataset.tab === tabId);
+  }
+
+  private updateActiveTab(): void {
+    this.tabs.forEach((tab) => {
+      const isActive = tab.dataset.tab === this.activeTab;
+      tab.active = isActive;
+
+      // Update ARIA attributes for better accessibility
+      tab.setAttribute('aria-selected', isActive.toString());
+      tab.setAttribute('tabindex', isActive ? '0' : '-1');
+
+      // Link tab to its corresponding tabpanel
+      if (tab.dataset.tab) {
+        tab.setAttribute('aria-controls', `${tab.dataset.tab}-panel`);
+      }
     });
+  }
 
-    // Set active attribute on the selected tab
-    if (this._activeTab) {
-      const activeTab = this.querySelector(`ttg-tab[data-tab="${this._activeTab}"]`);
-      if (activeTab) {
-        activeTab.setAttribute('active', '');
-      }
+  protected updated(changedProperties: Map<string, unknown>): void {
+    if (changedProperties.has('activeTab')) {
+      this.updateActiveTab();
     }
   }
 
-  private initializeActiveTab() {
-    // Find the tab with active attribute or use the first tab
-    const activeTab = this.querySelector('ttg-tab[active]') as HTMLElement;
+  private initializeActiveTab(): void {
+    const activeTab = this.tabs.find((tab) => tab.active);
     if (activeTab && activeTab.dataset.tab) {
-      this._activeTab = activeTab.dataset.tab;
-    } else {
-      // Use first tab as default
-      const firstTab = this.querySelector('ttg-tab') as HTMLElement;
-      if (firstTab && firstTab.dataset.tab) {
-        this._activeTab = firstTab.dataset.tab;
-        firstTab.setAttribute('active', '');
+      this.activeTab = activeTab.dataset.tab;
+    } else if (this.tabs.length > 0) {
+      const firstTab = this.tabs[0];
+      if (firstTab.dataset.tab) {
+        this.activeTab = firstTab.dataset.tab;
+        firstTab.active = true;
       }
     }
   }
 
-  // Public method to programmatically change active tab
-  public switchTab(tabId: string) {
+  public switchTab(tabId: string): void {
+    if (!this.isValidTabId(tabId)) {
+      console.warn(`Tab with id "${tabId}" not found`);
+      return;
+    }
     this.setActiveTab(tabId);
+    this.dispatchTabChangeEvent(tabId);
+  }
 
-    // Dispatch the same event as click would
+  private dispatchTabChangeEvent(tabId: string): void {
     this.dispatchEvent(
       new CustomEvent('tab-change', {
         detail: { tabId },
@@ -120,5 +146,3 @@ export class Tabs extends HTMLElement {
     );
   }
 }
-
-customElements.define('ttg-tabs', Tabs);
