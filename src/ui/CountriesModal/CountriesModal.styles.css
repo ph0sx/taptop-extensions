@@ -166,6 +166,17 @@
   cursor: pointer;
 }
 
+.ttg-countries-modal-table tbody tr.selected {
+  background-color: var(--ttg-color-bg-blue-100, #dbeafe) !important;
+  outline: 2px solid var(--ttg-color-bg-blue-base, #3290ff);
+  outline-offset: -2px;
+}
+
+.ttg-countries-modal-table tbody tr:focus {
+  outline: 2px solid var(--ttg-color-bg-blue-base, #3290ff);
+  outline-offset: -2px;
+}
+
 .ttg-countries-modal-table td {
   padding: 12px 16px;
   border-bottom: 1px solid var(--ttg-color-stroke-gray-200, #e5e5e5);
@@ -239,6 +250,18 @@
 /* Hidden class for filtered countries */
 .ttg-countries-modal-table tbody tr.hidden {
   display: none;
+}
+
+/* Spacer rows for virtualization */
+.ttg-countries-modal-table tbody tr[style*="height"] td {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.ttg-countries-modal-table tbody tr[style*="height"]:hover {
+  background: transparent;
+  cursor: default;
 }
 
 /* Responsive design */

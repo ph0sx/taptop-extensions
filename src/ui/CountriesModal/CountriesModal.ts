@@ -1,6 +1,7 @@
+import { LitElement, html, unsafeCSS, type TemplateResult } from 'lit';
+import { property, state, query } from 'lit/decorators.js';
 import baseStyles from '../../styles/base.css';
 import countriesModalStyles from './CountriesModal.styles.css';
-import { template } from './CountriesModal.template';
 import '../Input/Input';
 
 interface Country {
@@ -8,26 +9,43 @@ interface Country {
   code: string;
 }
 
-interface CountriesModalElements {
-  overlay: HTMLElement | null;
-  modal: HTMLElement | null;
-  closeButtons: NodeListOf<HTMLElement>;
-  searchInput: HTMLElement | null;
-  tableBody: HTMLElement | null;
-  tableRows: HTMLElement[];
+interface CountrySelectDetail {
+  country: string;
 }
 
-export class CountriesModal extends HTMLElement {
-  private elements: CountriesModalElements = {
-    overlay: null,
-    modal: null,
-    closeButtons: [] as unknown as NodeListOf<HTMLElement>,
-    searchInput: null,
-    tableBody: null,
-    tableRows: [],
-  };
+export class CountriesModal extends LitElement {
+  static styles = [unsafeCSS(baseStyles), unsafeCSS(countriesModalStyles)];
 
-  private countries: Country[] = [
+  @property({ type: Boolean, reflect: true })
+  accessor open = false;
+
+  @state()
+  private accessor searchTerm = '';
+
+  @state()
+  private accessor filteredCountries: Country[] = [];
+
+  @state()
+  private accessor selectedIndex = -1;
+
+  @state()
+  private accessor visibleStartIndex = 0;
+
+  @query('.ttg-countries-modal-search-input')
+  private searchInput?: HTMLElement;
+
+  @query('.ttg-countries-modal-table-body')
+  private tableBody?: HTMLElement;
+
+  @query('.ttg-countries-modal-table-container')
+  private tableContainer?: HTMLElement;
+
+  private debounceTimer?: number;
+  private onCountrySelect: ((country: string) => void) | null = null;
+  private readonly itemHeight = 44; // Примерная высота строки в пикселях
+  private readonly visibleItemsCount = 10; // Количество видимых элементов
+
+  private readonly countries: Country[] = [
     // CIS Countries (Priority)
     { name: 'Russia', code: 'RU' },
     { name: 'Belarus', code: 'BY' },
@@ -110,119 +128,266 @@ export class CountriesModal extends HTMLElement {
     { name: 'Oman', code: 'OM' },
   ];
 
-  private onCountrySelect: ((country: string) => void) | null = null;
-
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
-    this.shadowRoot!.innerHTML = `<style>${baseStyles}${countriesModalStyles}</style>${template}`;
-    this.findElements();
-    this.bindEvents();
-    this.renderCountries();
+    this.filteredCountries = this.countries;
+    this.addEventListener('keydown', this.handleKeyDown);
   }
 
-  private findElements(): void {
-    this.elements.overlay = this.shadowRoot!.querySelector('.ttg-countries-modal-overlay');
-    this.elements.modal = this.shadowRoot!.querySelector('.ttg-countries-modal');
-    this.elements.closeButtons = this.shadowRoot!.querySelectorAll(
-      '.ttg-countries-modal-close, .ttg-countries-modal-close-btn',
-    );
-    this.elements.searchInput = this.shadowRoot!.querySelector('.ttg-countries-modal-search-input');
-    this.elements.tableBody = this.shadowRoot!.querySelector('.ttg-countries-modal-table-body');
+  firstUpdated(): void {
+    if (this.tableContainer) {
+      this.tableContainer.addEventListener('scroll', this.handleScroll);
+    }
   }
 
-  private bindEvents(): void {
-    // Close modal events
-    this.elements.closeButtons.forEach((button) => {
-      button.addEventListener('click', () => this.close());
-    });
-
-    // Close on overlay click
-    this.elements.overlay?.addEventListener('click', (e) => {
-      if (e.target === this.elements.overlay) {
-        this.close();
-      }
-    });
-
-    // Close on ESC key
-    this.handleEscKey = this.handleEscKey.bind(this);
+  connectedCallback(): void {
+    super.connectedCallback();
     document.addEventListener('keydown', this.handleEscKey);
-
-    // Search functionality
-    this.elements.searchInput?.addEventListener('change', () => {
-      const searchTerm =
-        (this.elements.searchInput as HTMLInputElement)?.value?.toLowerCase() || '';
-      this.filterCountries(searchTerm);
-    });
-
-    // Also listen to input events for real-time search
-    this.elements.searchInput?.addEventListener('input', () => {
-      const searchTerm =
-        (this.elements.searchInput as HTMLInputElement)?.value?.toLowerCase() || '';
-      this.filterCountries(searchTerm);
-    });
-
-    // Stop propagation on modal click to prevent closing
-    this.elements.modal?.addEventListener('click', (e) => {
-      e.stopPropagation();
-    });
   }
 
-  private handleEscKey(event: KeyboardEvent): void {
-    if (event.key === 'Escape') {
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    document.removeEventListener('keydown', this.handleEscKey);
+    if (this.tableContainer) {
+      this.tableContainer.removeEventListener('scroll', this.handleScroll);
+    }
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+    }
+  }
+
+  render(): TemplateResult {
+    return html`
+      <div class="ttg-countries-modal-overlay" @click="${this.handleOverlayClick}">
+        <div class="ttg-countries-modal" @click="${this.stopPropagation}">
+          <div class="ttg-countries-modal-header">
+            <h3 class="ttg-countries-modal-title">Список стран для GeoJS API</h3>
+            <button class="ttg-countries-modal-close" type="button" @click="${this.close}">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M18 6L6 18M6 6L18 18"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <div class="ttg-countries-modal-content">
+            <p class="ttg-countries-modal-description">
+              Используйте полное название страны на английском языке. Ниже приведены примеры
+              наиболее распространенных стран:
+            </p>
+
+            <div class="ttg-countries-modal-search">
+              <ttg-input
+                label="Поиск"
+                placeholder="Поиск страны..."
+                class="ttg-countries-modal-search-input"
+                .value="${this.searchTerm}"
+                @change="${this.handleSearchChange}"
+                @input="${this.handleSearchInput}"
+              >
+              </ttg-input>
+            </div>
+
+            <div class="ttg-countries-modal-table-container">
+              <table class="ttg-countries-modal-table" role="table" aria-label="Список стран">
+                <thead>
+                  <tr>
+                    <th>Полное название (использовать)</th>
+                    <th>Код ISO (НЕ использовать)</th>
+                  </tr>
+                </thead>
+                <tbody class="ttg-countries-modal-table-body" role="rowgroup">
+                  ${this.renderVirtualizedCountryRows()}
+                </tbody>
+              </table>
+            </div>
+
+            <p class="ttg-countries-modal-note">
+              <strong>Примечание:</strong> Для обозначения любой страны используйте символ "*".
+              Нажмите на название страны, чтобы использовать его.
+            </p>
+          </div>
+
+          <div class="ttg-countries-modal-footer">
+            <button class="ttg-countries-modal-close-btn" type="button" @click="${this.close}">
+              Закрыть
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderVirtualizedCountryRows(): TemplateResult[] {
+    const totalHeight = this.filteredCountries.length * this.itemHeight;
+    const visibleEndIndex = Math.min(
+      this.visibleStartIndex + this.visibleItemsCount,
+      this.filteredCountries.length,
+    );
+
+    const topSpacerHeight = this.visibleStartIndex * this.itemHeight;
+    const bottomSpacerHeight = totalHeight - visibleEndIndex * this.itemHeight;
+
+    const visibleItems = this.filteredCountries.slice(this.visibleStartIndex, visibleEndIndex);
+
+    return [
+      // Верхний спейсер для виртуализации
+      topSpacerHeight > 0
+        ? html`<tr style="height: ${topSpacerHeight}px;">
+              <td colspan="2"></td>
+            </tr>`
+        : html``,
+
+      // Видимые элементы
+      ...visibleItems.map((country, localIndex) => {
+        const globalIndex = this.visibleStartIndex + localIndex;
+        return html`
+          <tr
+            class="${this.selectedIndex === globalIndex ? 'selected' : ''}"
+            role="button"
+            tabindex="0"
+            aria-label="Выбрать страну ${country.name}"
+            style="height: ${this.itemHeight}px;"
+            @click="${() => this.selectCountry(country.name)}"
+            @keydown="${(e: KeyboardEvent) => this.handleRowKeyDown(e, country.name)}"
+          >
+            <td class="country-name">${country.name}</td>
+            <td>${country.code}</td>
+          </tr>
+        `;
+      }),
+
+      // Нижний спейсер для виртуализации
+      bottomSpacerHeight > 0
+        ? html`<tr style="height: ${bottomSpacerHeight}px;">
+              <td colspan="2"></td>
+            </tr>`
+        : html``,
+    ].filter((item) => item !== html``);
+  }
+
+  private handleEscKey = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape' && this.open) {
+      this.close();
+    }
+  };
+
+  private handleKeyDown = (event: KeyboardEvent): void => {
+    if (!this.open) return;
+
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        this.selectedIndex = Math.min(this.selectedIndex + 1, this.filteredCountries.length - 1);
+        this.scrollToSelectedRow();
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        this.selectedIndex = Math.max(this.selectedIndex - 1, 0);
+        this.scrollToSelectedRow();
+        break;
+      case 'Enter':
+        if (this.selectedIndex >= 0 && this.filteredCountries[this.selectedIndex]) {
+          this.selectCountry(this.filteredCountries[this.selectedIndex].name);
+        }
+        break;
+    }
+  };
+
+  private handleRowKeyDown(event: KeyboardEvent, countryName: string): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.selectCountry(countryName);
+    }
+  }
+
+  private handleOverlayClick(event: Event): void {
+    if (event.target === event.currentTarget) {
       this.close();
     }
   }
 
-  private renderCountries(): void {
-    if (!this.elements.tableBody) return;
-
-    this.elements.tableBody.innerHTML = '';
-    this.elements.tableRows = [];
-
-    this.countries.forEach((country) => {
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td class="country-name" data-country="${country.name}">${country.name}</td>
-        <td>${country.code}</td>
-      `;
-      // Add click handler for country selection
-      row.addEventListener('click', () => {
-        this.selectCountry(country.name);
-      });
-
-      // Add hover styling
-      row.style.cursor = 'pointer';
-      if (this.elements.tableBody) {
-        this.elements.tableBody.appendChild(row);
-        this.elements.tableRows.push(row);
-      }
-    });
+  private stopPropagation(event: Event): void {
+    event.stopPropagation();
   }
 
-  private filterCountries(searchTerm: string): void {
-    this.elements.tableRows.forEach((row) => {
-      const countryName = row.querySelector('.country-name')?.textContent?.toLowerCase() || '';
-      const isVisible = countryName.includes(searchTerm);
-      if (isVisible) {
-        row.classList.remove('hidden');
-      } else {
-        row.classList.add('hidden');
-      }
-    });
+  private handleSearchChange(event: CustomEvent): void {
+    const input = event.target as HTMLElement & { value?: string };
+    this.searchTerm = input.value || '';
+    this.performSearch();
+  }
+
+  private handleSearchInput(event: Event): void {
+    const input = event.target as HTMLElement & { value?: string };
+    this.searchTerm = input.value || '';
+    this.debouncedSearch();
+  }
+
+  private debouncedSearch(): void {
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+    }
+    this.debounceTimer = window.setTimeout(() => {
+      this.performSearch();
+    }, 300);
+  }
+
+  private performSearch(): void {
+    const searchTerm = this.searchTerm.toLowerCase();
+    this.filteredCountries = this.countries.filter((country) =>
+      country.name.toLowerCase().includes(searchTerm),
+    );
+    this.selectedIndex = -1;
+  }
+
+  private handleScroll = (): void => {
+    if (!this.tableContainer) return;
+
+    const scrollTop = this.tableContainer.scrollTop;
+    const newVisibleStartIndex = Math.floor(scrollTop / this.itemHeight);
+
+    if (newVisibleStartIndex !== this.visibleStartIndex) {
+      this.visibleStartIndex = newVisibleStartIndex;
+    }
+  };
+
+  private scrollToSelectedRow(): void {
+    if (!this.tableContainer || this.selectedIndex < 0) return;
+
+    const selectedRowTop = this.selectedIndex * this.itemHeight;
+    const containerHeight = this.tableContainer.clientHeight;
+    const scrollTop = this.tableContainer.scrollTop;
+
+    // Проверяем, видна ли выбранная строка
+    if (selectedRowTop < scrollTop) {
+      // Строка выше видимой области
+      this.tableContainer.scrollTop = selectedRowTop;
+    } else if (selectedRowTop + this.itemHeight > scrollTop + containerHeight) {
+      // Строка ниже видимой области
+      this.tableContainer.scrollTop = selectedRowTop - containerHeight + this.itemHeight;
+    }
   }
 
   private selectCountry(countryName: string): void {
-    // Dispatch custom event
     this.dispatchEvent(
-      new CustomEvent('country-select', {
+      new CustomEvent<CountrySelectDetail>('country-select', {
         detail: { country: countryName },
         bubbles: true,
         composed: true,
       }),
     );
 
-    // Call callback if provided
     if (this.onCountrySelect) {
       this.onCountrySelect(countryName);
     }
@@ -235,40 +400,30 @@ export class CountriesModal extends HTMLElement {
   }
 
   public show(): void {
-    // Add to document body for proper layering
     document.body.appendChild(this);
-    // Focus search input (ttg-input component)
-    setTimeout(() => {
-      if (this.elements.searchInput) {
-        // For ttg-input component, we need to focus the internal input
-        const internalInput = this.elements.searchInput.shadowRoot?.querySelector('input');
+    this.open = true;
+    this.updateComplete.then(() => {
+      if (this.searchInput) {
+        const internalInput = this.searchInput.shadowRoot?.querySelector('input');
         if (internalInput) {
           internalInput.focus();
         }
       }
-    }, 100);
+    });
   }
 
   public close(): void {
-    // Remove event listeners
-    document.removeEventListener('keydown', this.handleEscKey);
-    // Remove from DOM
+    this.open = false;
     if (this.parentNode) {
       this.parentNode.removeChild(this);
     }
 
-    // Dispatch close event
     this.dispatchEvent(
       new CustomEvent('modal-close', {
         bubbles: true,
         composed: true,
       }),
     );
-  }
-
-  // Clean up when component is removed
-  disconnectedCallback(): void {
-    document.removeEventListener('keydown', this.handleEscKey);
   }
 }
 
