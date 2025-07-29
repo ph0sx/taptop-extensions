@@ -1,238 +1,653 @@
+import { LitElement, html, unsafeCSS, type TemplateResult } from 'lit';
+import { property, state, query } from 'lit/decorators.js';
 import baseStyles from '../../styles/base.css';
 import dropdownStyles from './Dropdown.styles.css';
-import { template } from './Dropdown.template';
 import '../Question/Question';
 import { generateUniqueId } from '../../utils/generate-id';
+import type { ValidatableElement, ValidationRuleConfig } from '../../types/validation.js';
 
-interface DropdownElements {
-  wrapper: HTMLElement | null;
-  label: HTMLLabelElement | null;
-  select: HTMLSelectElement | null;
-  errorMessage: HTMLElement | null;
+export interface DropdownOption {
+  value: string;
+  text: string;
 }
 
-export class Dropdown extends HTMLElement {
-  private elements: DropdownElements = {
-    wrapper: null,
-    label: null,
-    select: null,
-    errorMessage: null,
-  };
+/**
+ * Компонент выпадающего списка с валидацией
+ *
+ * @element ttg-dropdown
+ *
+ * @attr {string} label - Текст метки поля
+ * @attr {string} value - Выбранное значение
+ * @attr {string} error - Текст ошибки валидации
+ * @attr {boolean} disabled - Отключено ли поле
+ * @attr {string} placeholder - Текст заглушки
+ * @attr {boolean} required - Обязательно ли поле для заполнения
+ * @attr {string} tooltip - Текст всплывающей подсказки
+ * @attr {string} options-json - JSON строка с опциями
+ *
+ * @fires change - Событие изменения значения
+ * @fires validation-change - Событие изменения состояния валидации
+ */
+export class Dropdown extends LitElement implements ValidatableElement {
+  // Реактивные свойства
+  @property({ type: String })
+  accessor label = '';
 
-  private touched = false;
-  private userStartedTyping = false;
+  @property({ type: String })
+  accessor value = '';
+
+  @property({ type: String })
+  accessor error = '';
+
+  @property({ type: Boolean })
+  accessor disabled = false;
+
+  @property({ type: String })
+  accessor placeholder = '';
+
+  @property({ type: Boolean })
+  accessor required = false;
+
+  @property({ type: String })
+  accessor tooltip = '';
+
+  @property({ type: String, attribute: 'options-json' })
+  accessor optionsJson = '';
+
+  @property({ type: Boolean, attribute: 'enable-search' })
+  accessor enableSearch = false;
+
+  @property({ type: String, attribute: 'search-placeholder' })
+  accessor searchPlaceholder = 'Поиск...';
+
+  // Внутреннее состояние
+  @state()
+  private accessor touched = false;
+
+  @state()
+  private accessor options: DropdownOption[] = [];
+
+  @state()
+  private accessor filteredOptions: DropdownOption[] = [];
+
+  @state()
+  private accessor searchValue = '';
+
+  @state()
+  private accessor isOpen = false;
+
+  @state()
+  private accessor highlightedIndex = -1;
+
+  @query('.ttg-dropdown-control')
+  private selectElement?: HTMLSelectElement;
+
+  @query('.ttg-dropdown-search')
+  private searchElement?: HTMLInputElement;
+
+  @query('.ttg-dropdown-options')
+  private optionsElement?: HTMLElement;
+
   private uniqueId = generateUniqueId('ttg-dropdown');
 
-  static get observedAttributes() {
-    return ['label', 'value', 'error', 'disabled', 'required', 'tooltip', 'options'];
+  // Поддержка ValidationController
+  get hasError(): boolean {
+    return this.error !== '';
   }
+
+  /**
+   * Устанавливает ошибку валидации (вызывается ValidationController)
+   */
+  setError(error: string): void {
+    this.error = error;
+  }
+
+  /**
+   * Очищает ошибку валидации (вызывается ValidationController)
+   */
+  clearError(): void {
+    this.error = '';
+  }
+
+  /**
+   * Возвращает правила валидации на основе атрибутов
+   */
+  getValidationRules(): ValidationRuleConfig[] {
+    const rules: ValidationRuleConfig[] = [];
+
+    if (this.required) {
+      rules.push({ type: 'required' });
+    }
+
+    return rules;
+  }
+
+  /**
+   * Устанавливает опции для выпадающего списка
+   */
+  setOptions(newOptions: DropdownOption[]): void {
+    this.options = [...newOptions];
+  }
+
+  static styles = [unsafeCSS(baseStyles), unsafeCSS(dropdownStyles)];
 
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
-    this.shadowRoot!.innerHTML = `<style>${baseStyles}${dropdownStyles}</style>${template}`;
+  }
 
-    this.elements.wrapper = this.shadowRoot!.querySelector('.ttg-dropdown-wrapper');
-    this.elements.label = this.shadowRoot!.querySelector('label');
-    this.elements.select = this.shadowRoot!.querySelector('.ttg-dropdown-control');
-    this.elements.errorMessage = this.shadowRoot!.querySelector('.ttg-dropdown-error-text');
+  /**
+   * Обновляет опции при изменении optionsJson и фильтрует их по поиску
+   */
+  willUpdate(changedProperties: Map<string | number | symbol, unknown>): void {
+    super.willUpdate(changedProperties);
 
-    // Устанавливаем связь между label и select
-    if (this.elements.select) {
-      this.elements.select.id = this.uniqueId;
+    if (changedProperties.has('optionsJson') && this.optionsJson) {
+      try {
+        const parsedOptions = JSON.parse(this.optionsJson);
+        if (Array.isArray(parsedOptions) && this.isValidOptionsArray(parsedOptions)) {
+          this.options = parsedOptions;
+        }
+      } catch (e) {
+        console.error('Invalid options format:', e);
+        this.options = [];
+      }
     }
-    if (this.elements.label) {
-      this.elements.label.setAttribute('for', this.uniqueId);
+
+    // Обновляем отфильтрованные опции при изменении options или searchValue
+    if (changedProperties.has('options') || changedProperties.has('searchValue')) {
+      this.updateFilteredOptions();
     }
   }
 
-  get value() {
-    return this.elements.select?.value || '';
+  /**
+   * Проверяет корректность структуры опций
+   */
+  private isValidOptionsArray(options: unknown[]): options is DropdownOption[] {
+    return options.every(
+      (option): option is DropdownOption =>
+        typeof option === 'object' &&
+        option !== null &&
+        typeof (option as DropdownOption).value === 'string' &&
+        typeof (option as DropdownOption).text === 'string',
+    );
   }
 
-  set value(val: string) {
-    if (this.elements.select) {
-      this.elements.select.value = val;
+  /**
+   * Обновляет список отфильтрованных опций на основе поискового запроса
+   */
+  private updateFilteredOptions(): void {
+    if (!this.searchValue.trim()) {
+      this.filteredOptions = [...this.options];
+      return;
     }
+
+    const searchLower = this.searchValue.toLowerCase();
+    this.filteredOptions = this.options.filter(
+      (option) =>
+        option.text.toLowerCase().includes(searchLower) ||
+        option.value.toLowerCase().includes(searchLower),
+    );
   }
 
-  get hasError() {
-    return this.elements.wrapper?.classList.contains('error') || false;
+  /**
+   * Рендерит tooltip компонент если задан
+   */
+  private renderTooltip(): TemplateResult | string {
+    return this.tooltip
+      ? html`<ttg-question tooltip="${this.tooltip}" style="height: 16px;"></ttg-question>`
+      : '';
   }
 
-  setError(message: string) {
-    if (this.elements.errorMessage) {
-      this.elements.errorMessage.textContent = message;
-    }
-    if (this.elements.wrapper) {
-      this.elements.wrapper.classList.add('error');
-    }
-    this.setAttribute('error', message);
-  }
+  /**
+   * Рендерит опции выпадающего списка для обычного select
+   */
+  private renderSelectOptions(): TemplateResult[] {
+    const optionTemplates: TemplateResult[] = [];
 
-  clearError() {
-    if (this.elements.errorMessage) {
-      this.elements.errorMessage.textContent = '';
-    }
-    if (this.elements.wrapper) {
-      this.elements.wrapper.classList.remove('error');
-    }
-    this.removeAttribute('error');
-  }
-
-  validate(): boolean {
-    const value = this.value.trim();
-    let isValid = true;
-
-    if (this.hasAttribute('required') && !value) {
-      this.setError('Это поле обязательно для заполнения');
-      isValid = false;
+    // Добавляем placeholder опцию
+    if (this.placeholder) {
+      optionTemplates.push(html`<option value="">${this.placeholder}</option>`);
     }
 
-    if (isValid) {
-      this.clearError();
-    }
-
-    // Dispatch validation change event
-    this.dispatchEvent(
-      new CustomEvent('validation-change', {
-        detail: { isValid, value },
-        bubbles: true,
-        composed: true,
-      }),
+    // Добавляем опции из данных
+    optionTemplates.push(
+      ...this.options.map(
+        (option) => html`<option value="${option.value}">${option.text}</option>`,
+      ),
     );
 
-    return isValid;
+    return optionTemplates;
   }
 
+  /**
+   * Рендерит кастомные опции для поиска
+   */
+  private renderCustomOptions(): TemplateResult[] {
+    return this.filteredOptions.map(
+      (option: DropdownOption, index: number) => html`
+        <div
+          class="ttg-dropdown-option ${index === this.highlightedIndex
+            ? 'highlighted'
+            : ''} ${option.value === this.value ? 'selected' : ''}"
+          data-value="${option.value}"
+          @click="${() => this.selectOption(option)}"
+          @mouseenter="${() => this.setHighlightedIndex(index)}"
+        >
+          ${option.text}
+        </div>
+      `,
+    );
+  }
+
+  /**
+   * Рендерит поле поиска
+   */
+  private renderSearchField(): TemplateResult {
+    return html`
+      <input
+        type="text"
+        class="ttg-dropdown-search"
+        placeholder="${this.searchPlaceholder}"
+        .value="${this.searchValue}"
+        @input="${this.handleSearchInput}"
+        @keydown="${this.handleSearchKeyDown}"
+      />
+    `;
+  }
+
+  /**
+   * Рендерит кастомный dropdown с поиском
+   */
+  private renderCustomDropdown(): TemplateResult {
+    const selectedOption = this.options.find((opt: DropdownOption) => opt.value === this.value);
+    const displayText = selectedOption?.text || this.placeholder || 'Выберите опцию';
+
+    return html`
+      <div class="ttg-dropdown-field-custom">
+        <div
+          class="ttg-dropdown-trigger"
+          @click="${this.toggleDropdown}"
+          @keydown="${this.handleTriggerKeyDown}"
+          tabindex="0"
+          role="combobox"
+          aria-expanded="${this.isOpen}"
+          aria-haspopup="listbox"
+          aria-labelledby="${this.uniqueId}-label"
+          aria-describedby="${this.error ? `${this.uniqueId}-error` : ''}"
+          aria-invalid="${this.hasError}"
+        >
+          <span class="ttg-dropdown-value ${!selectedOption ? 'placeholder' : ''}">
+            ${displayText}
+          </span>
+          ${this.renderArrowIcon()}
+        </div>
+        ${this.isOpen
+          ? html`
+              <div class="ttg-dropdown-panel">
+                ${this.renderSearchField()}
+                <div class="ttg-dropdown-options" role="listbox">
+                  ${this.filteredOptions.length > 0
+                    ? this.renderCustomOptions()
+                    : html`<div class="ttg-dropdown-no-options">Нет подходящих вариантов</div>`}
+                </div>
+              </div>
+            `
+          : ''}
+      </div>
+    `;
+  }
+
+  /**
+   * Рендерит SVG иконку стрелки
+   */
+  private renderArrowIcon(): TemplateResult {
+    return html`
+      <svg
+        class="ttg-dropdown-arrow"
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 20 20"
+        fill="none"
+      >
+        <path
+          d="M15.8337 7.5L10.0003 13.3333L4.16699 7.5"
+          stroke="#A9A9A9"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    `;
+  }
+
+  /**
+   * Рендерит SVG иконку ошибки
+   */
+  private renderErrorIcon(): TemplateResult {
+    return html`
+      <svg
+        class="ttg-dropdown-error-icon"
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 20 20"
+        fill="none"
+      >
+        <path
+          fill-rule="evenodd"
+          clip-rule="evenodd"
+          d="M2.5 10C2.5 5.85787 5.85787 2.5 10 2.5C14.1422 2.5 17.5 5.85787 17.5 10C17.5 14.1422 14.1422 17.5 10 17.5C5.85787 17.5 2.5 14.1422 2.5 10ZM10 5.98837C10.289 5.98837 10.5233 6.22264 10.5233 6.51163V10.6977C10.5233 10.9867 10.289 11.2209 10 11.2209C9.71102 11.2209 9.47674 10.9867 9.47674 10.6977V6.51163C9.47674 6.22264 9.71102 5.98837 10 5.98837ZM10.3959 13.8378C10.5893 13.623 10.5718 13.2921 10.357 13.0988C10.1422 12.9055 9.81135 12.9228 9.61802 13.1377L9.61105 13.1454C9.41772 13.3602 9.43516 13.691 9.64998 13.8844C9.86479 14.0777 10.1956 14.0603 10.389 13.8455L10.3959 13.8378Z"
+          fill="#FF2B71"
+        />
+      </svg>
+    `;
+  }
+
+  /**
+   * Вычисляет CSS классы для обёртки компонента
+   */
+  private getWrapperClasses(): string {
+    return `ttg-dropdown-wrapper${this.error ? ' error' : ''}`;
+  }
+
+  /**
+   * Рендерит блок ошибки если есть ошибка
+   */
+  private renderError(): TemplateResult | string {
+    return this.error
+      ? html`
+          <div class="ttg-dropdown-error" id="${this.uniqueId}-error" role="alert">
+            ${this.renderErrorIcon()}
+            <span class="ttg-dropdown-error-text">${this.error}</span>
+          </div>
+        `
+      : '';
+  }
+
+  /**
+   * Основной метод рендеринга компонента
+   */
+  render(): TemplateResult {
+    return html`
+      <div class="${this.getWrapperClasses()}">
+        <label for="${this.uniqueId}" id="${this.uniqueId}-label">
+          <span class="ttg-dropdown-label">${this.label}</span>
+          ${this.required ? html`<span class="ttg-dropdown-required">*</span>` : ''}
+          ${this.renderTooltip()}
+        </label>
+        ${this.enableSearch ? this.renderCustomDropdown() : this.renderNativeSelect()}
+        ${this.renderError()}
+      </div>
+    `;
+  }
+
+  /**
+   * Рендерит нативный select
+   */
+  private renderNativeSelect(): TemplateResult {
+    return html`
+      <div class="ttg-dropdown-field">
+        <select
+          id="${this.uniqueId}"
+          class="ttg-dropdown-control"
+          .value="${this.value}"
+          ?disabled="${this.disabled}"
+          ?required="${this.required}"
+          aria-describedby="${this.error ? `${this.uniqueId}-error` : ''}"
+          aria-invalid="${this.hasError}"
+          @change="${this.handleChange}"
+          @blur="${this.handleBlur}"
+          @keydown="${this.handleKeyDown}"
+        >
+          ${this.renderSelectOptions()}
+        </select>
+        ${this.renderArrowIcon()}
+      </div>
+    `;
+  }
+
+  /**
+   * Проверяет, является ли элемент HTML select элементом
+   */
+  private isSelectElement(element: EventTarget | null): element is HTMLSelectElement {
+    return element instanceof HTMLSelectElement;
+  }
+
+  /**
+   * Обработчик события изменения значения
+   */
+  private handleChange = (e: Event) => {
+    if (!this.isSelectElement(e.target)) {
+      return;
+    }
+
+    const target = e.target;
+    this.value = target.value;
+
+    // Очищаем ошибку при изменении
+    if (this.error) {
+      this.error = '';
+    }
+
+    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+  };
+
+  /**
+   * Обработчик события потери фокуса
+   */
+  private handleBlur = () => {
+    this.touched = true;
+    // ValidationController сам обработает blur через свои обработчики
+  };
+
+  /**
+   * Обработчик нажатия клавиш для улучшенной навигации
+   */
+  private handleKeyDown = (e: KeyboardEvent) => {
+    // Escape - закрыть dropdown (браузер обрабатывает автоматически)
+    if (e.key === 'Escape' && this.selectElement) {
+      this.selectElement.blur();
+    }
+  };
+
+  /**
+   * Совместимость с ValidationController - принудительная валидация
+   */
+  validate(): boolean {
+    return !this.hasError;
+  }
+
+  /**
+   * Принудительная валидация с установкой touched
+   */
   forceValidate(): boolean {
     this.touched = true;
-    this.userStartedTyping = true;
     return this.validate();
   }
 
-  setOptions(options: Array<{ value: string; text: string }>) {
-    if (!this.elements.select) return;
-
-    // Очищаем существующие опции
-    this.elements.select.innerHTML = '';
-
-    // Добавляем пустую опцию если есть placeholder
-    const placeholder = this.getAttribute('placeholder');
-    if (placeholder) {
-      const placeholderOption = document.createElement('option');
-      placeholderOption.value = '';
-      placeholderOption.textContent = placeholder;
-      this.elements.select.appendChild(placeholderOption);
+  /**
+   * Обработчик ввода в поле поиска
+   */
+  private handleSearchInput = (e: Event) => {
+    if (e.target instanceof HTMLInputElement) {
+      this.searchValue = e.target.value;
+      this.highlightedIndex = 0;
     }
+  };
 
-    // Добавляем новые опции
-    options.forEach((option) => {
-      const optionElement = document.createElement('option');
-      optionElement.value = option.value;
-      optionElement.textContent = option.text;
-      this.elements.select!.appendChild(optionElement);
-    });
-  }
-
-  connectedCallback() {
-    this.elements.select?.addEventListener('change', () => {
-      this.userStartedTyping = true;
-
-      if (this.hasError) {
-        this.clearError();
-      }
-
-      this.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
-    });
-
-    this.elements.select?.addEventListener('blur', () => {
-      this.touched = true;
-
-      if (this.userStartedTyping || this.value.trim() || this.hasError) {
-        this.validate();
-      }
-    });
-
-    this.updateTooltip();
-  }
-
-  attributeChangedCallback(name: string, _oldValue: string, newValue: string) {
-    switch (name) {
-      case 'label': {
-        const labelSpan = this.shadowRoot?.querySelector('.ttg-dropdown-label');
-        if (labelSpan) {
-          labelSpan.textContent = newValue;
+  /**
+   * Обработчик клавиш в поле поиска
+   */
+  private handleSearchKeyDown = (e: KeyboardEvent) => {
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        this.moveHighlight(1);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        this.moveHighlight(-1);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (this.highlightedIndex >= 0 && this.highlightedIndex < this.filteredOptions.length) {
+          this.selectOption(this.filteredOptions[this.highlightedIndex]);
         }
         break;
-      }
+      case 'Escape':
+        e.preventDefault();
+        this.closeDropdown();
+        break;
+    }
+  };
 
-      case 'value':
-        if (this.elements.select) {
-          this.elements.select.value = newValue;
+  /**
+   * Обработчик клавиш для триггера кастомного dropdown
+   */
+  private handleTriggerKeyDown = (e: KeyboardEvent) => {
+    switch (e.key) {
+      case 'ArrowDown':
+      case 'ArrowUp':
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        if (!this.isOpen) {
+          this.openDropdown();
         }
         break;
-
-      case 'error':
-        if (newValue) {
-          if (this.elements.errorMessage) {
-            this.elements.errorMessage.textContent = newValue;
-          }
-          if (this.elements.wrapper) {
-            this.elements.wrapper.classList.add('error');
-          }
-        } else {
-          if (this.elements.errorMessage) {
-            this.elements.errorMessage.textContent = '';
-          }
-          if (this.elements.wrapper) {
-            this.elements.wrapper.classList.remove('error');
-          }
-        }
-        break;
-
-      case 'disabled':
-        if (this.elements.select) {
-          this.elements.select.disabled = this.hasAttribute('disabled');
-        }
-        break;
-
-      case 'required':
-        this.updateRequiredIndicator();
-        break;
-
-      case 'tooltip':
-        this.updateTooltip();
-        break;
-
-      case 'options':
-        try {
-          const options = JSON.parse(newValue);
-          this.setOptions(options);
-        } catch (e) {
-          console.warn('Invalid options format:', e);
+      case 'Escape':
+        if (this.isOpen) {
+          e.preventDefault();
+          this.closeDropdown();
         }
         break;
     }
-  }
+  };
 
-  private updateRequiredIndicator() {
-    const requiredSpan = this.shadowRoot?.querySelector('.ttg-dropdown-required') as HTMLElement;
-    if (requiredSpan) {
-      requiredSpan.style.display = this.hasAttribute('required') ? 'inline' : 'none';
+  /**
+   * Перемещает выделение в списке опций
+   */
+  private moveHighlight(direction: number): void {
+    const newIndex = this.highlightedIndex + direction;
+
+    if (newIndex >= 0 && newIndex < this.filteredOptions.length) {
+      this.highlightedIndex = newIndex;
+      this.scrollHighlightedIntoView();
     }
   }
 
-  private updateTooltip() {
-    const questionElement = this.shadowRoot?.querySelector('ttg-question') as HTMLElement;
-    if (questionElement) {
-      const tooltipValue = this.getAttribute('tooltip');
-      if (tooltipValue) {
-        questionElement.style.display = 'block';
-        questionElement.setAttribute('tooltip', tooltipValue);
-      } else {
-        questionElement.style.display = 'none';
-      }
+  /**
+   * Прокручивает выделенный элемент в видимую область
+   */
+  private scrollHighlightedIntoView(): void {
+    if (!this.optionsElement) return;
+
+    const highlightedElement = this.optionsElement.querySelector(
+      '.ttg-dropdown-option.highlighted',
+    ) as HTMLElement;
+    if (highlightedElement) {
+      highlightedElement.scrollIntoView({
+        block: 'nearest',
+        behavior: 'smooth',
+      });
+    }
+  }
+
+  /**
+   * Устанавливает индекс выделенной опции
+   */
+  private setHighlightedIndex(index: number): void {
+    this.highlightedIndex = index;
+  }
+
+  /**
+   * Переключает состояние dropdown
+   */
+  private toggleDropdown(): void {
+    if (this.disabled) return;
+
+    if (this.isOpen) {
+      this.closeDropdown();
+    } else {
+      this.openDropdown();
+    }
+  }
+
+  /**
+   * Открывает dropdown
+   */
+  private openDropdown(): void {
+    if (this.disabled) return;
+
+    this.isOpen = true;
+    this.searchValue = '';
+    this.updateFilteredOptions(); // Обновляем фильтр при открытии
+    this.highlightedIndex = this.filteredOptions.findIndex(
+      (opt: DropdownOption) => opt.value === this.value,
+    );
+    if (this.highlightedIndex === -1) {
+      this.highlightedIndex = 0;
+    }
+
+    this.updateComplete
+      .then(() => {
+        this.searchElement?.focus();
+      })
+      .catch(() => {
+        // Игнорируем ошибки updateComplete
+      });
+  }
+
+  /**
+   * Закрывает dropdown
+   */
+  private closeDropdown(): void {
+    this.isOpen = false;
+    this.searchValue = '';
+    this.highlightedIndex = -1;
+  }
+
+  /**
+   * Выбирает опцию
+   */
+  private selectOption(option: DropdownOption): void {
+    this.value = option.value;
+    this.closeDropdown();
+
+    if (this.error) {
+      this.error = '';
+    }
+
+    this.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+  }
+
+  /**
+   * Обработчик клика вне компонента для закрытия dropdown
+   */
+  private handleDocumentClick = (e: Event) => {
+    if (!this.contains(e.target as Node)) {
+      this.closeDropdown();
+    }
+  };
+
+  /**
+   * Подключение компонента
+   */
+  connectedCallback(): void {
+    super.connectedCallback();
+    if (this.enableSearch) {
+      document.addEventListener('click', this.handleDocumentClick);
+    }
+  }
+
+  /**
+   * Отключение компонента
+   */
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    if (this.enableSearch) {
+      document.removeEventListener('click', this.handleDocumentClick);
     }
   }
 }
