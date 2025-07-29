@@ -1,7 +1,6 @@
 import { LitElement, html, type TemplateResult, unsafeCSS } from 'lit';
 import { state, query } from 'lit/decorators.js';
 import baseStyles from '../../styles/base.css';
-import { variables as variablesStyles } from '../../styles/vars.styles';
 import { CodeMinifier, type MinifierOptions } from '../../services/CodeMinifier.js';
 import { ClipboardService } from '../../services/ClipboardService.js';
 import { NotificationManager } from '../../services/NotificationManager.js';
@@ -10,7 +9,7 @@ export type GeneratorConfig = Record<string, string | number | boolean | Date | 
 
 export abstract class BaseGenerator extends LitElement {
   // Базовые стили
-  static styles = [unsafeCSS(variablesStyles), unsafeCSS(baseStyles)];
+  static styles = [unsafeCSS(baseStyles)];
 
   // Состояние генерации
   @state()
