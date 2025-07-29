@@ -4,6 +4,7 @@ import baseStyles from '../../styles/base.css';
 import { CodeMinifier, type MinifierOptions } from '../../services/CodeMinifier.js';
 import { ClipboardService } from '../../services/ClipboardService.js';
 import { NotificationManager } from '../../services/NotificationManager.js';
+import type { ValidationRuleMap } from '../../controllers/ReactiveValidationController.js';
 
 export type GeneratorConfig = Record<string, string | number | boolean | Date | null | undefined>;
 
@@ -39,6 +40,15 @@ export abstract class BaseGenerator extends LitElement {
   protected abstract renderContent(): TemplateResult;
   protected abstract collectData(): GeneratorConfig | null;
   protected abstract generateCode(settings: GeneratorConfig): string;
+
+  // Новый абстрактный метод для реактивной валидации
+  protected abstract getValidationRules(): ValidationRuleMap;
+
+  // Метод для извлечения значения поля из состояния (переопределяется в наследниках)
+  protected getFieldValue(fieldId: string): string {
+    const element = this.shadowRoot?.getElementById(fieldId) as HTMLInputElement;
+    return element?.value || '';
+  }
 
   // Инициализация после первого рендера
   firstUpdated(): void {

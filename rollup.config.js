@@ -3,10 +3,15 @@ import typescript from '@rollup/plugin-typescript';
 import postcss from 'rollup-plugin-postcss';
 import cssnano from 'cssnano';
 import resolve from '@rollup/plugin-node-resolve';
+import replace from '@rollup/plugin-replace';
 
 // Общая конфигурация для плагинов
 const commonPlugins = [
   resolve({ browser: true }),
+  replace({
+    preventAssignment: true,
+    'process.env.NODE_ENV': JSON.stringify('production'),
+  }),
   postcss({
     extract: false,
     inject: false,
@@ -65,4 +70,19 @@ const multilandingGeneratorBuild = {
   plugins: commonPlugins,
 };
 
-export default [mainBuild, cookieGeneratorBuild, multilandingGeneratorBuild];
+const lottieAutoplayGeneratorBuild = {
+  input: 'src/entries/entry-lottie-autoplay-generator.ts',
+  output: {
+    file: 'dist/lottie-autoplay-generator.js',
+    format: 'es',
+  },
+
+  plugins: commonPlugins,
+};
+
+export default [
+  mainBuild,
+  cookieGeneratorBuild,
+  multilandingGeneratorBuild,
+  lottieAutoplayGeneratorBuild,
+];
