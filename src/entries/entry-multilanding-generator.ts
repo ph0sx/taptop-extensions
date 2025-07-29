@@ -1,2 +1,2 @@
 import '../utils/global-styles';
-import '../components/cookie/MultilandingGenerator';
+import '../components/multilanding/MultilandingGenerator';

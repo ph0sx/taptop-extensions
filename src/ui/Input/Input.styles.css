@@ -30,7 +30,7 @@
 /* INPUT GROUP */
 .ttg-input-field {
   position: relative;
-  height: 52px;
+  max-height: 52px;
   padding: 16px 12px 16px 16px;
   border-radius: 10px;
   background: var(--grey-100, #f5f5f5);

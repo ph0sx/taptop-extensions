@@ -99,7 +99,8 @@ export interface ValidationEvents {
  */
 export interface ValidatableElement extends HTMLElement {
   readonly id: string;
-  readonly value: string;
+  readonly value: string | string[];
+  readonly isValid?: boolean;
   readonly hasError?: boolean;
   validate?(): boolean;
   setError?(error: string): void;
