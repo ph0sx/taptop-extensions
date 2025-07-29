@@ -1,29 +1,38 @@
-/* 1. Главный контейнер */
+/* Question component styles with design tokens */
+
 .ttg-question-container {
-  position: relative; /* Это ключ к позиционированию тултипа! */
+  position: relative;
   display: flex;
   align-items: center;
   cursor: help;
 }
 
-/* 2. Стили для иконки */
 .ttg-question-icon {
-  color: #2c2c2c;
-  transition: fill 0.2s ease;
-  height: 16px;
-  width: 16px;
+  color: var(--ttg-question-icon-color, #2c2c2c);
+  transition: fill var(--ttg-question-transition-duration, 0.2s) ease;
+  height: var(--ttg-question-icon-size, 16px);
+  width: var(--ttg-question-icon-size, 16px);
 }
 
 .ttg-question-icon path {
-  fill: #d5d5d5;
-  transition: fill 0.2s ease;
+  fill: var(--ttg-question-icon-fill, #d5d5d5);
+  transition: fill var(--ttg-question-transition-duration, 0.2s) ease;
 }
 
 .ttg-question-container:hover .ttg-question-icon path {
-  fill: #333333;
+  fill: var(--ttg-question-icon-fill-hover, #333333);
 }
 
-/* 3. Стили для самого тултипа (текста) - скрыт, так как используется portal */
-.ttg-question-tooltip {
-  display: none;
+/* Additional CSS custom properties for tooltip styling (applied via JavaScript) */
+:host {
+  --ttg-question-tooltip-width: 280px;
+  --ttg-question-tooltip-bg: #ffffff;
+  --ttg-question-tooltip-color: #616161;
+  --ttg-question-tooltip-padding: 12px;
+  --ttg-question-tooltip-radius: 12px;
+  --ttg-question-tooltip-border: #d5d5d5;
+  --ttg-question-tooltip-shadow: 0px 12px 24px 0px rgba(138, 143, 147, 0.12), 0px 1px 2px 0px rgba(228, 229, 231, 0.24);
+  --ttg-question-tooltip-font-size: 14px;
+  --ttg-question-tooltip-line-height: 20px;
+  --ttg-question-tooltip-font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
