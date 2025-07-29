@@ -1,89 +1,43 @@
+import { LitElement, html, unsafeCSS, type TemplateResult } from 'lit';
+import { property } from 'lit/decorators.js';
 import baseStyles from '../../styles/base.css';
 import generatorSectionStyles from './GeneratorSection.styles.css';
-import { template } from './GeneratorSection.template';
 
-export class GeneratorSection extends HTMLElement {
-  private shadow: ShadowRoot;
-  private elements: {
-    title?: HTMLElement;
-    content?: HTMLElement;
-  } = {};
+/**
+ * Компонент-секция для группировки элементов генератора
+ * с опциональным заголовком и границей
+ *
+ * @element ttg-generator-section
+ *
+ * @attr {string} label - Заголовок секции
+ * @attr {boolean} bordered - Добавить верхнюю границу
+ *
+ * @slot - Содержимое секции
+ */
+export class GeneratorSection extends LitElement {
+  static styles = [unsafeCSS(baseStyles), unsafeCSS(generatorSectionStyles)];
 
-  static get observedAttributes() {
-    return ['label', 'bordered'];
-  }
+  @property({ type: String })
+  accessor label = '';
 
-  constructor() {
-    super();
-    this.shadow = this.attachShadow({ mode: 'open' });
-  }
+  @property({ type: Boolean })
+  accessor bordered = false;
 
-  get label(): string {
-    return this.getAttribute('label') || '';
-  }
-
-  set label(value: string) {
-    this.setAttribute('label', value);
-  }
-
-  get bordered(): boolean {
-    return this.hasAttribute('bordered');
-  }
-
-  set bordered(value: boolean) {
-    if (value) {
-      this.setAttribute('bordered', '');
-    } else {
-      this.removeAttribute('bordered');
-    }
-  }
-
-  connectedCallback() {
-    this.render();
-    this.findElements();
-    this.updateTitle();
-    this.updateBorder();
-  }
-
-  attributeChangedCallback(name: string) {
-    if (!this.shadow) return;
-
-    switch (name) {
-      case 'label':
-        this.updateTitle();
-        break;
-      case 'bordered':
-        this.updateBorder();
-        break;
-    }
-  }
-
-  private render(): void {
-    this.shadow.innerHTML = `<style>${baseStyles}${generatorSectionStyles}</style>${template}`;
-  }
-
-  private findElements(): void {
-    this.elements.title = this.shadow.querySelector('.ttg-generator-section-title') || undefined;
-    this.elements.content =
-      this.shadow.querySelector('.ttg-generator-section-content') || undefined;
-  }
-
-  private updateTitle(): void {
-    if (this.elements.title) {
-      this.elements.title.textContent = this.label;
-      // Скрываем заголовок если он пустой
-      const header = this.shadow.querySelector('.ttg-generator-section-header') as HTMLElement;
-      if (header) {
-        header.style.display = this.label ? 'block' : 'none';
-      }
-    }
-  }
-
-  private updateBorder(): void {
-    const section = this.shadow.querySelector('.ttg-generator-section');
-    if (section) {
-      section.classList.toggle('with-border', this.bordered);
-    }
+  protected render(): TemplateResult {
+    return html`
+      <div class="ttg-generator-section ${this.bordered ? 'with-border' : ''}">
+        ${this.label
+          ? html`
+          <div class="ttg-generator-section-header">
+                <h3 class="ttg-generator-section-title">${this.label}</h3>
+              </div>
+        `
+          : ''}
+        <div class="ttg-generator-section-content">
+          <slot></slot>
+        </div>
+      </div>
+    `;
   }
 }
 
