@@ -22,7 +22,6 @@
 
 /* REQUIRED ICON */
 .ttg-dropdown-required {
-  display: none;
   color: var(--red, #ff2b71);
 }
 
@@ -116,4 +115,168 @@
 /* Показываем блок ошибки при наличии класса error */
 .ttg-dropdown-wrapper.error .ttg-dropdown-error {
   display: flex;
+}
+
+/* ======== CUSTOM DROPDOWN ============ */
+
+/* Кастомный dropdown wrapper */
+.ttg-dropdown-field-custom {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Триггер для кастомного dropdown */
+.ttg-dropdown-trigger {
+  display: flex;
+  padding: 16px 12px 16px 16px;
+  justify-content: space-between;
+  align-items: center;
+  align-self: stretch;
+  border-radius: 10px;
+  background: var(--grey-100, #f5f5f5);
+  border: 1px solid transparent;
+  transition: border-color 0.3s ease;
+  color: var(--grey-900, #666);
+  cursor: pointer;
+  outline: none;
+}
+
+.ttg-dropdown-trigger:hover {
+  border: 1px solid var(--grey-300, #d5d5d5);
+}
+
+.ttg-dropdown-trigger:focus {
+  border: 1px solid var(--black, #333);
+  color: var(--black, #333) !important;
+}
+
+.ttg-dropdown-trigger[aria-expanded="true"] {
+  border: 1px solid var(--black, #333);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* Значение в триггере */
+.ttg-dropdown-value {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: -0.28px;
+  color: inherit;
+}
+
+.ttg-dropdown-value.placeholder {
+  color: var(--grey-500, #999);
+}
+
+/* Панель с опциями */
+.ttg-dropdown-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: white;
+  border: 1px solid var(--black, #333);
+  border-top: none;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  max-height: 240px;
+  overflow: hidden;
+}
+
+/* Поле поиска */
+.ttg-dropdown-search {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-bottom: 1px solid var(--grey-200, #e5e5e5);
+  outline: none;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: -0.28px;
+  background: white;
+}
+
+.ttg-dropdown-search:focus {
+  border-bottom-color: var(--black, #333);
+}
+
+/* Контейнер опций */
+.ttg-dropdown-options {
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+/* Опция в списке */
+.ttg-dropdown-option {
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: -0.28px;
+  color: var(--grey-900, #666);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.ttg-dropdown-option:hover,
+.ttg-dropdown-option.highlighted {
+  background-color: var(--grey-100, #f5f5f5);
+}
+
+.ttg-dropdown-option.selected {
+  background-color: var(--blue-100, #e3f2fd);
+  color: var(--blue-700, #1976d2);
+  font-weight: 500;
+}
+
+.ttg-dropdown-option.selected.highlighted {
+  background-color: var(--blue-200, #bbdefb);
+}
+
+/* Сообщение об отсутствии опций */
+.ttg-dropdown-no-options {
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: -0.28px;
+  color: var(--grey-500, #999);
+  text-align: center;
+  font-style: italic;
+}
+
+/* Скролл для опций */
+.ttg-dropdown-options::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ttg-dropdown-options::-webkit-scrollbar-track {
+  background: var(--grey-100, #f5f5f5);
+}
+
+.ttg-dropdown-options::-webkit-scrollbar-thumb {
+  background: var(--grey-300, #d5d5d5);
+  border-radius: 3px;
+}
+
+.ttg-dropdown-options::-webkit-scrollbar-thumb:hover {
+  background: var(--grey-400, #bbb);
+}
+
+/* Состояние ошибки для кастомного dropdown */
+.ttg-dropdown-wrapper.error .ttg-dropdown-trigger {
+  border: 1px solid var(--critical, #ff2b71);
+}
+
+.ttg-dropdown-wrapper.error .ttg-dropdown-trigger[aria-expanded="true"] {
+  border-bottom: none;
+}
+
+.ttg-dropdown-wrapper.error .ttg-dropdown-panel {
+  border-color: var(--critical, #ff2b71);
 }
