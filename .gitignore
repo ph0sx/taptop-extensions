@@ -1,2 +1,8 @@
 node_modules
 dist
+.DS_Store
+CLAUDE.md
+src/lit
+README.md
+.eslintcache
+COMPONENTS_API.md
