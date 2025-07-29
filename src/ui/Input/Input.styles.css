@@ -22,7 +22,6 @@
 
 /* REQUIRED ICON */
 .ttg-input-required {
-  display: none;
   color: var(--red, #ff2b71);
 }
 
