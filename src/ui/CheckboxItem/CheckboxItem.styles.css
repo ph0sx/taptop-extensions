@@ -28,6 +28,16 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  background-size: 20px 20px;
+  background-repeat: no-repeat;
+  background-position: center;
+  /* Default unchecked state */
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none'%3E%3Crect x='2' y='2' width='16' height='16' rx='4' fill='%23D5D5D5'/%3E%3Cg filter='url(%23filter0_d_2269_255)'%3E%3Crect x='3.5' y='3.5' width='13' height='13' rx='2.6' fill='white'/%3E%3C/g%3E%3Cdefs%3E%3Cfilter id='filter0_d_2269_255' x='1.5' y='3.5' width='17' height='17' filterUnits='userSpaceOnUse' color-interpolation-filters='sRGB'%3E%3CfeFlood flood-opacity='0' result='BackgroundImageFix'/%3E%3CfeColorMatrix in='SourceAlpha' type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0' result='hardAlpha'/%3E%3CfeOffset dy='2'/%3E%3CfeGaussianBlur stdDeviation='1'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.105882 0 0 0 0 0.109804 0 0 0 0 0.113725 0 0 0 0.12 0'/%3E%3CfeBlend mode='normal' in2='BackgroundImageFix' result='effect1_dropShadow_2269_255'/%3E%3CfeBlend mode='normal' in='SourceGraphic' in2='effect1_dropShadow_2269_255' result='shape'/%3E%3C/filter%3E%3C/defs%3E%3C/svg%3E");
+}
+
+/* CHECKED STATE ICON */
+.ttg-checkbox-input:checked + .ttg-checkbox-icon {
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiByeD0iNCIgZmlsbD0iIzMyOTBGRiIvPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTE0LjUzMDQgOC4wMjk0MUw5LjAwMDA2IDEzLjU1OTdMNS40Njk3MyAxMC4wMjk0TDYuNTMwMzkgOC45Njg3NUw5LjAwMDA2IDExLjQzODRMMTMuNDY5NyA2Ljk2ODc1TDE0LjUzMDQgOC4wMjk0MVoiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=');
 }
 
 /* CHECKBOX LABEL TEXT */
@@ -38,7 +48,6 @@
     'cv09' on,
     'liga' off,
     'calt' off;
-  font-family: Inter;
   font-size: 14px;
   font-style: normal;
   font-weight: 500;

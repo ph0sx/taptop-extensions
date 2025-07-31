@@ -151,7 +151,7 @@
   color: var(--black, #333) !important;
 }
 
-.ttg-dropdown-trigger[aria-expanded="true"] {
+.ttg-dropdown-trigger[aria-expanded='true'] {
   border: 1px solid var(--black, #333);
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
@@ -273,7 +273,7 @@
   border: 1px solid var(--critical, #ff2b71);
 }
 
-.ttg-dropdown-wrapper.error .ttg-dropdown-trigger[aria-expanded="true"] {
+.ttg-dropdown-wrapper.error .ttg-dropdown-trigger[aria-expanded='true'] {
   border-bottom: none;
 }
 

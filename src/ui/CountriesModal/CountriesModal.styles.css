@@ -253,13 +253,13 @@
 }
 
 /* Spacer rows for virtualization */
-.ttg-countries-modal-table tbody tr[style*="height"] td {
+.ttg-countries-modal-table tbody tr[style*='height'] td {
   padding: 0;
   border: none;
   background: transparent;
 }
 
-.ttg-countries-modal-table tbody tr[style*="height"]:hover {
+.ttg-countries-modal-table tbody tr[style*='height']:hover {
   background: transparent;
   cursor: default;
 }

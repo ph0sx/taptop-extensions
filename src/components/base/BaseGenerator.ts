@@ -79,7 +79,7 @@ export abstract class BaseGenerator extends LitElement {
       const code = this.generateCode(settings);
 
       if (this.codeOutput) {
-        this.codeOutput.textContent = code;
+        this.codeOutput.innerHTML = code;
       }
 
       const minified = await this.codeMinifier.minify(code, this.getMinifierOptions());
