@@ -470,7 +470,39 @@ export default class LottieScrollGenerator extends BaseGenerator {
 
     return `
 <script type="module" defer>
-  // Загружаем необходимые библиотеки
+  // Утилита для retry с экспоненциальной задержкой
+  const retryWithBackoff = async (fn, maxRetries = 3, delay = 1000) => {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        console.warn(\`Taptop Lottie: Попытка \${attempt}/\${maxRetries} не удалась:\`, error.message);
+        
+        if (attempt === maxRetries) {
+          throw new Error(\`Не удалось выполнить операцию после \${maxRetries} попыток: \${error.message}\`);
+        }
+        
+        // Экспоненциальная задержка: 1s, 2s, 4s...
+        const waitTime = delay * Math.pow(2, attempt - 1);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+  };
+
+  // Проверка доступности URL
+  const validateUrl = async (url) => {
+    try {
+      const response = await fetch(url, { method: 'HEAD', cache: 'no-cache' });
+      if (!response.ok) {
+        throw new Error(\`HTTP \${response.status}: \${response.statusText}\`);
+      }
+      return true;
+    } catch (error) {
+      throw new Error(\`URL недоступен: \${error.message}\`);
+    }
+  };
+
+  // Загружаем необходимые библиотеки с retry
   const loadScripts = async () => {
     const scripts = [
       'https://unpkg.com/@lottiefiles/lottie-player@2.0.4/dist/lottie-player.js',
@@ -479,76 +511,196 @@ export default class LottieScrollGenerator extends BaseGenerator {
     
     for (const src of scripts) {
       if (!document.querySelector(\`script[src="\${src}"]\`)) {
-        const script = document.createElement('script');
-        script.src = src;
-        await new Promise((resolve, reject) => {
-          script.onload = resolve;
-          script.onerror = reject;
-          document.head.appendChild(script);
+        await retryWithBackoff(async () => {
+          const script = document.createElement('script');
+          script.src = src;
+          
+          return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error(\`Таймаут загрузки скрипта: \${src}\`));
+            }, 10000);
+            
+            script.onload = () => {
+              clearTimeout(timeout);
+              resolve();
+            };
+            
+            script.onerror = () => {
+              clearTimeout(timeout);
+              reject(new Error(\`Ошибка загрузки скрипта: \${src}\`));
+            };
+            
+            document.head.appendChild(script);
+          });
         });
       }
+    }
+    
+    // Ждём гарантированную инициализацию библиотек
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    // Проверяем доступность библиотек
+    if (typeof LottieInteractivity === 'undefined') {
+      throw new Error('LottieInteractivity не загружена');
     }
   };
 
   // Конфигурации анимаций
   const lottieConfigs = ${configJson};
 
-  // Инициализация анимации
-  const initLottieScrollAnimation = (config) => {
+  // Инициализация анимации с валидацией URL
+  const initLottieScrollAnimation = async (config) => {
     const containers = document.querySelectorAll('.' + config.targetClass);
     
-    containers.forEach((container, index) => {
-      // Проверяем, не создан ли уже плеер
-      if (container.querySelector('lottie-player')) return;
+    if (containers.length === 0) {
+      console.warn(\`Taptop Lottie: Элементы с классом "\${config.targetClass}" не найдены\`);
+      return;
+    }
+    
+    // Валидация URL анимации
+    try {
+      console.log(\`Taptop Lottie: Проверяем доступность \${config.lottieUrl}\`);
+      await retryWithBackoff(() => validateUrl(config.lottieUrl), 2, 500);
+      console.log(\`Taptop Lottie: URL \${config.lottieUrl} доступен\`);
+    } catch (error) {
+      console.error(\`Taptop Lottie: Анимация \${config.targetClass} пропущена - \${error.message}\`);
       
-      // Создаём уникальный ID для плеера
-      const playerId = 'lottie-scroll-' + config.targetClass + '-' + index + '-' + Date.now();
-      
-      // Создаём плеер
-      const player = document.createElement('lottie-player');
-      player.id = playerId;
-      player.src = config.lottieUrl;
-      player.style.width = '100%';
-      player.style.height = '100%';
-      player.setAttribute('background', 'transparent');
-      
-      container.appendChild(player);
-      
-      // Настраиваем интерактивность после загрузки плеера
-      player.addEventListener('ready', () => {
-        try {
-          // Получаем количество кадров для обработки 'last'
-          const totalFrames = player.getLottie().totalFrames;
-          const endFrame = config.endFrame === 'last' ? totalFrames - 1 : config.endFrame;
-          
-          LottieInteractivity.create({
-            mode: "scroll",
-            player: '#' + playerId,
-            actions: [{
-              visibility: [config.startScroll, config.endScroll],
-              type: "seek",
-              frames: [config.startFrame, endFrame]
-            }]
-          });
-        } catch (error) {
-          console.error('Taptop Lottie Scroll: ошибка настройки интерактивности для ' + config.targetClass, error);
+      // Показываем сообщение пользователю в контейнерах
+      containers.forEach(container => {
+        if (!container.querySelector('.lottie-error-message')) {
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'lottie-error-message';
+          errorDiv.style.cssText = 'padding: 20px; text-align: center; color: #666; font-size: 14px; background: #f5f5f5; border-radius: 8px;';
+          errorDiv.textContent = 'Анимация временно недоступна';
+          container.appendChild(errorDiv);
         }
       });
+      return;
+    }
+    
+    containers.forEach(async (container, index) => {
+      try {
+        // Проверяем, не создан ли уже плеер
+        if (container.querySelector('lottie-player')) return;
+        
+        // Создаём уникальный ID для плеера
+        const playerId = 'lottie-scroll-' + config.targetClass + '-' + index + '-' + Date.now();
+        
+        console.log(\`Taptop Lottie: Создаём плеер \${playerId} для \${config.lottieUrl}\`);
+        
+        // Создаём плеер
+        const player = document.createElement('lottie-player');
+        player.id = playerId;
+        player.src = config.lottieUrl;
+        player.style.width = '100%';
+        player.style.height = '100%';
+        player.setAttribute('background', 'transparent');
+        
+        // Обработка ошибок загрузки плеера
+        player.addEventListener('error', (e) => {
+          console.error(\`Taptop Lottie: Ошибка загрузки плеера \${playerId}:\`, e);
+          const errorDiv = document.createElement('div');
+          errorDiv.style.cssText = 'padding: 20px; text-align: center; color: #ff6b6b; font-size: 14px;';
+          errorDiv.textContent = 'Ошибка загрузки анимации';
+          container.appendChild(errorDiv);
+        });
+        
+        container.appendChild(player);
+        
+        // Настраиваем интерактивность после загрузки плеера
+        player.addEventListener('ready', () => {
+          try {
+            console.log(\`Taptop Lottie: Плеер \${playerId} готов, настраиваем интерактивность\`);
+            
+            // Получаем количество кадров для обработки 'last'
+            const lottieInstance = player.getLottie();
+            if (!lottieInstance) {
+              throw new Error('Не удалось получить экземпляр Lottie');
+            }
+            
+            const totalFrames = lottieInstance.totalFrames;
+            const endFrame = config.endFrame === 'last' ? totalFrames - 1 : config.endFrame;
+            
+            console.log(\`Taptop Lottie: Настраиваем скролл для \${playerId}, кадры: \${config.startFrame}-\${endFrame}, скролл: \${config.startScroll}-\${config.endScroll}\`);
+            
+            LottieInteractivity.create({
+              mode: "scroll",
+              player: '#' + playerId,
+              actions: [{
+                visibility: [config.startScroll, config.endScroll],
+                type: "seek",
+                frames: [config.startFrame, endFrame]
+              }]
+            });
+            
+            console.log(\`Taptop Lottie: Интерактивность настроена для \${playerId}\`);
+          } catch (error) {
+            console.error(\`Taptop Lottie: Ошибка настройки интерактивности для \${config.targetClass}:\`, error);
+          }
+        });
+        
+        // Таймаут для обнаружения зависших загрузок
+        setTimeout(() => {
+          if (!player.getLottie()) {
+            console.warn(\`Taptop Lottie: Таймаут загрузки для \${playerId}\`);
+          }
+        }, 15000);
+        
+      } catch (error) {
+        console.error(\`Taptop Lottie: Критическая ошибка при создании плеера для \${config.targetClass}:\`, error);
+      }
     });
   };
 
   // Основная функция инициализации
   const init = async () => {
+    console.log('Taptop Lottie Scroll: Начинаем инициализацию');
+    
     try {
+      // Загружаем библиотеки с полным error handling
+      console.log('Taptop Lottie Scroll: Загружаем библиотеки...');
       await loadScripts();
+      console.log('Taptop Lottie Scroll: Библиотеки загружены успешно');
       
-      // Небольшая задержка для гарантии загрузки библиотек
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Проверяем количество конфигураций
+      console.log(\`Taptop Lottie Scroll: Найдено \${lottieConfigs.length} конфигураций анимаций\`);
       
-      // Инициализируем каждую конфигурацию
-      lottieConfigs.forEach(initLottieScrollAnimation);
+      if (lottieConfigs.length === 0) {
+        console.warn('Taptop Lottie Scroll: Нет конфигураций для инициализации');
+        return;
+      }
+      
+      // Инициализируем каждую конфигурацию последовательно для избежания race conditions
+      for (let i = 0; i < lottieConfigs.length; i++) {
+        const config = lottieConfigs[i];
+        console.log(\`Taptop Lottie Scroll: Инициализируем конфигурацию \${i + 1}/\${lottieConfigs.length} (\${config.targetClass})\`);
+        
+        try {
+          await initLottieScrollAnimation(config);
+          console.log(\`Taptop Lottie Scroll: Конфигурация \${config.targetClass} инициализирована успешно\`);
+        } catch (configError) {
+          console.error(\`Taptop Lottie Scroll: Ошибка инициализации конфигурации \${config.targetClass}:\`, configError);
+          // Не прерываем обработку остальных конфигураций
+        }
+        
+        // Небольшая задержка между инициализациями
+        if (i < lottieConfigs.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      
+      console.log('Taptop Lottie Scroll: Инициализация завершена');
+      
     } catch (error) {
-      console.error('Taptop Lottie Scroll: ошибка инициализации', error);
+      console.error('Taptop Lottie Scroll: Критическая ошибка инициализации:', error);
+      
+      // Дополнительная диагностика
+      console.error('Taptop Lottie Scroll: Диагностика:', {
+        'DOM ready': document.readyState,
+        'LottieInteractivity available': typeof LottieInteractivity !== 'undefined',
+        'lottie-player defined': typeof customElements.get('lottie-player') !== 'undefined',
+        'Config count': lottieConfigs.length
+      });
     }
   };
 
