@@ -6,7 +6,7 @@ import {
   ReactiveValidationController,
   type ValidationRuleMap,
 } from '../../controllers/ReactiveValidationController.js';
-import blurTextScrollStyles from './BlurTextScrollGenerator.styles.css';
+import colorTransitionTextStyles from './ColorTransitionTextGenerator.styles.css';
 
 // UI компоненты
 import '../../ui/Generator/Generator.js';
@@ -14,54 +14,63 @@ import '../../ui/Input/Input.js';
 import '../../ui/Button/Button.js';
 import '../../ui/GeneratorSection/GeneratorSection.js';
 import '../../ui/Question/Question.js';
+import '../../ui/CheckboxGroup/CheckboxGroup.js';
+import '../../ui/CheckboxItem/CheckboxItem.js';
+import '../../ui/ColorPicker/ColorPicker.js';
 
 // Типы для конфигурации
-interface BlurTextScrollRule {
+interface ColorTransitionRule {
   id: string;
   animationIdentifier: string;
-  animationSpeed: string; // "0.5s"
-  blurAmount: string; // "5px"
-  animationStart: number; // 0-1 (0.6)
-  animationEnd: number; // 0-1 (0.4)
+  animationSpeed: string; // "0.3s"
+  colorFrom: string; // "#7f7f7f"
+  colorTo: string; // "#664ee8"
+  slowdownEffect: boolean;
+  endSlowdownEffect: boolean;
+  animationDelay: number; // 0-1
+  delayBeforeStart: string; // "0s"
 }
 
 // Конфигурация для BaseGenerator compatibility
-interface BlurTextScrollFormData extends GeneratorConfig {
+interface ColorTransitionFormData extends GeneratorConfig {
   rulesData: string; // Serialized rules for GeneratorConfig compatibility
 }
 
 // Внутренняя типизированная конфигурация для состояния компонента
-interface BlurTextScrollConfig {
-  rules: BlurTextScrollRule[];
+interface ColorTransitionConfig {
+  rules: ColorTransitionRule[];
 }
 
 // Чистые типы без ID для генерации кода
-type CleanBlurTextScrollRule = Omit<BlurTextScrollRule, 'id'>;
+type CleanColorTransitionRule = Omit<ColorTransitionRule, 'id'>;
 
-interface CleanBlurTextScrollConfig {
-  rules: CleanBlurTextScrollRule[];
+interface CleanColorTransitionConfig {
+  rules: CleanColorTransitionRule[];
 }
 
-@customElement('blur-text-scroll-generator')
-export default class BlurTextScrollGenerator extends BaseGenerator {
-  static styles = [...BaseGenerator.styles, unsafeCSS(blurTextScrollStyles)];
+@customElement('color-transition-text-generator')
+export default class ColorTransitionTextGenerator extends BaseGenerator {
+  static styles = [...BaseGenerator.styles, unsafeCSS(colorTransitionTextStyles)];
 
   // Lit состояние
-  @state() private accessor config: BlurTextScrollConfig = {
+  @state() private accessor config: ColorTransitionConfig = {
     rules: [
       {
         id: this.generateId(),
-        animationIdentifier: 'js-text-animation-blur-scroll-1',
-        animationSpeed: '0.5s',
-        blurAmount: '5px',
-        animationStart: 0.6,
-        animationEnd: 0.4,
+        animationIdentifier: 'js-text-animation-color-1',
+        animationSpeed: '0.3s',
+        colorFrom: '#7F7F7F',
+        colorTo: '#664EE8',
+        slowdownEffect: false,
+        endSlowdownEffect: false,
+        animationDelay: 0.05,
+        delayBeforeStart: '0s',
       },
     ],
   };
 
   // Реактивная валидация
-  private validationController = new ReactiveValidationController<BlurTextScrollConfig>(this, {
+  private validationController = new ReactiveValidationController<ColorTransitionConfig>(this, {
     getState: () => this.config,
     getRules: () => this.getValidationRules(),
     extractValue: (state, fieldId) => this.extractFieldValue(state, fieldId),
@@ -128,23 +137,33 @@ export default class BlurTextScrollGenerator extends BaseGenerator {
         { type: 'required', message: 'Скорость анимации обязательна' },
         {
           type: 'pattern',
-          message: 'Формат должен быть числом с единицами времени (например: 0.5s или 500ms)',
+          message: 'Формат должен быть числом с единицами времени (например: 0.3s или 300ms)',
           options: { pattern: /^\d+(\.\d+)?(s|ms)$/ },
         },
       ];
 
-      // Правила для размера размытия
-      rules[`blur-amount-${rule.id}`] = [
-        { type: 'required', message: 'Размер размытия обязателен' },
+      // Правила для начального цвета
+      rules[`color-from-${rule.id}`] = [
+        { type: 'required', message: 'Начальный цвет обязателен' },
         {
           type: 'pattern',
-          message: 'Формат должен быть числом с единицами px (например: 5px)',
-          options: { pattern: /^\d+(\.\d+)?px$/ },
+          message: 'Цвет должен быть в формате HEX (#RRGGBB)',
+          options: { pattern: /^#[0-9A-Fa-f]{8}$/ },
         },
       ];
 
-      // Правила для начала анимации
-      rules[`animation-start-${rule.id}`] = [
+      // Правила для конечного цвета
+      rules[`color-to-${rule.id}`] = [
+        { type: 'required', message: 'Конечный цвет обязателен' },
+        {
+          type: 'pattern',
+          message: 'Цвет должен быть в формате HEX (#RRGGBB)',
+          options: { pattern: /^#[0-9A-Fa-f]{8}$/ },
+        },
+      ];
+
+      // Правила для задержки между символами
+      rules[`animation-delay-${rule.id}`] = [
         {
           type: 'pattern',
           message: 'Значение должно быть числом от 0 до 1',
@@ -152,12 +171,12 @@ export default class BlurTextScrollGenerator extends BaseGenerator {
         },
       ];
 
-      // Правила для конца анимации
-      rules[`animation-end-${rule.id}`] = [
+      // Правила для задержки перед началом
+      rules[`delay-before-start-${rule.id}`] = [
         {
           type: 'pattern',
-          message: 'Значение должно быть числом от 0 до 1',
-          options: { pattern: /^(0|1|0\.\d+)$/ },
+          message: 'Формат должен быть числом с единицами времени (например: 0s или 500ms)',
+          options: { pattern: /^\d+(\.\d+)?(s|ms)$/ },
         },
       ];
     });
@@ -168,13 +187,14 @@ export default class BlurTextScrollGenerator extends BaseGenerator {
   /**
    * Извлекает значение поля из состояния компонента
    */
-  private extractFieldValue(state: BlurTextScrollConfig, fieldId: string): string {
+  private extractFieldValue(state: ColorTransitionConfig, fieldId: string): string {
     // Парсим ID поля чтобы понять к какому правилу он относится
     const identifierMatch = fieldId.match(/^animation-identifier-(.+)$/);
     const speedMatch = fieldId.match(/^animation-speed-(.+)$/);
-    const blurMatch = fieldId.match(/^blur-amount-(.+)$/);
-    const startMatch = fieldId.match(/^animation-start-(.+)$/);
-    const endMatch = fieldId.match(/^animation-end-(.+)$/);
+    const colorFromMatch = fieldId.match(/^color-from-(.+)$/);
+    const colorToMatch = fieldId.match(/^color-to-(.+)$/);
+    const delayMatch = fieldId.match(/^animation-delay-(.+)$/);
+    const delayBeforeStartMatch = fieldId.match(/^delay-before-start-(.+)$/);
 
     if (identifierMatch) {
       const ruleId = identifierMatch[1];
@@ -188,22 +208,28 @@ export default class BlurTextScrollGenerator extends BaseGenerator {
       return rule?.animationSpeed || '';
     }
 
-    if (blurMatch) {
-      const ruleId = blurMatch[1];
+    if (colorFromMatch) {
+      const ruleId = colorFromMatch[1];
       const rule = state.rules.find((r) => r.id === ruleId);
-      return rule?.blurAmount || '';
+      return rule?.colorFrom || '';
     }
 
-    if (startMatch) {
-      const ruleId = startMatch[1];
+    if (colorToMatch) {
+      const ruleId = colorToMatch[1];
       const rule = state.rules.find((r) => r.id === ruleId);
-      return rule?.animationStart.toString() || '0.6';
+      return rule?.colorTo || '';
     }
 
-    if (endMatch) {
-      const ruleId = endMatch[1];
+    if (delayMatch) {
+      const ruleId = delayMatch[1];
       const rule = state.rules.find((r) => r.id === ruleId);
-      return rule?.animationEnd.toString() || '0.4';
+      return rule?.animationDelay.toString() || '0.05';
+    }
+
+    if (delayBeforeStartMatch) {
+      const ruleId = delayBeforeStartMatch[1];
+      const rule = state.rules.find((r) => r.id === ruleId);
+      return rule?.delayBeforeStart || '0s';
     }
 
     return '';
@@ -213,19 +239,22 @@ export default class BlurTextScrollGenerator extends BaseGenerator {
     return Math.random().toString(36).substring(2, 11);
   }
 
-  private updateConfig(newConfig: BlurTextScrollConfig): void {
+  private updateConfig(newConfig: ColorTransitionConfig): void {
     this.config = newConfig;
   }
 
   // Методы для управления правилами
   private addRule(): void {
-    const newRule: BlurTextScrollRule = {
+    const newRule: ColorTransitionRule = {
       id: this.generateId(),
-      animationIdentifier: `js-text-animation-blur-scroll-${this.config.rules.length + 1}`,
-      animationSpeed: '0.5s',
-      blurAmount: '5px',
-      animationStart: 0.6,
-      animationEnd: 0.4,
+      animationIdentifier: `js-text-animation-color-${this.config.rules.length + 1}`,
+      animationSpeed: '0.3s',
+      colorFrom: '#7F7F7F',
+      colorTo: '#664EE8',
+      slowdownEffect: false,
+      endSlowdownEffect: false,
+      animationDelay: 0.05,
+      delayBeforeStart: '0s',
     };
 
     this.updateConfig({
@@ -249,8 +278,8 @@ export default class BlurTextScrollGenerator extends BaseGenerator {
   // Обновление полей правила
   private updateRule(
     id: string,
-    field: keyof Omit<BlurTextScrollRule, 'id'>,
-    value: string | number,
+    field: keyof Omit<ColorTransitionRule, 'id'>,
+    value: string | number | boolean,
   ): void {
     const updated = this.config.rules.map((rule) => {
       if (rule.id === id) {
@@ -262,7 +291,7 @@ export default class BlurTextScrollGenerator extends BaseGenerator {
   }
 
   // Рендер карточки правила
-  private renderRuleCard(rule: BlurTextScrollRule, index: number): TemplateResult {
+  private renderRuleCard(rule: ColorTransitionRule, index: number): TemplateResult {
     const canRemove = this.config.rules.length > 1;
 
     return html`
@@ -304,7 +333,7 @@ export default class BlurTextScrollGenerator extends BaseGenerator {
             <ttg-input
               id="animation-identifier-${rule.id}"
               label="Класс (источник стилей) целевого элемента"
-              placeholder="js-text-animation-blur-scroll"
+              placeholder="js-text-animation-color"
               .value="${rule.animationIdentifier}"
               required
               .error="${this.validationController.getFieldState(`animation-identifier-${rule.id}`)
@@ -317,15 +346,46 @@ export default class BlurTextScrollGenerator extends BaseGenerator {
                 this.validationController.touchField(`animation-identifier-${rule.id}`)}"
             >
             </ttg-input>
+
+            <ttg-color-picker
+              id="color-from-${rule.id}"
+              label="Начальный цвет"
+              .value="${rule.colorFrom}"
+              required
+              .error="${this.validationController.getFieldState(`color-from-${rule.id}`)?.error ??
+              ''}"
+              tooltip="Цвет текста в начале анимации в формате HEX"
+              @update-value="${(e: CustomEvent) => {
+                this.updateRule(rule.id, 'colorFrom', e.detail.value);
+              }}"
+              @field-blur="${() => this.validationController.touchField(`color-from-${rule.id}`)}"
+            >
+            </ttg-color-picker>
+
+            <ttg-color-picker
+              id="color-to-${rule.id}"
+              label="Конечный цвет"
+              .value="${rule.colorTo}"
+              required
+              .error="${this.validationController.getFieldState(`color-to-${rule.id}`)?.error ??
+              ''}"
+              tooltip="Цвет текста в конце анимации в формате HEX"
+              @update-value="${(e: CustomEvent) => {
+                this.updateRule(rule.id, 'colorTo', e.detail.value);
+              }}"
+              @field-blur="${() => this.validationController.touchField(`color-to-${rule.id}`)}"
+            >
+            </ttg-color-picker>
+
             <ttg-input
               id="animation-speed-${rule.id}"
               label="Скорость анимации"
-              placeholder="0.5s"
+              placeholder="0.3s"
               .value="${rule.animationSpeed}"
               required
               .error="${this.validationController.getFieldState(`animation-speed-${rule.id}`)
                 ?.error ?? ''}"
-              tooltip="Длительность анимации снятия размытия с каждого символа. Рекомендуется 0.5s для скролл-анимации"
+              tooltip="Общая длительность цветового перехода. Рекомендуется 0.3s"
               @update-value="${(e: CustomEvent) => {
                 this.updateRule(rule.id, 'animationSpeed', e.detail.value);
               }}"
@@ -333,75 +393,81 @@ export default class BlurTextScrollGenerator extends BaseGenerator {
                 this.validationController.touchField(`animation-speed-${rule.id}`)}"
             >
             </ttg-input>
+
             <ttg-input
-              id="blur-amount-${rule.id}"
-              label="Размер размытия"
-              placeholder="5px"
-              .value="${rule.blurAmount}"
-              required
-              .error="${this.validationController.getFieldState(`blur-amount-${rule.id}`)?.error ??
-              ''}"
-              tooltip="Начальный размер размытия символов. Рекомендуется 5px"
-              @update-value="${(e: CustomEvent) => {
-                this.updateRule(rule.id, 'blurAmount', e.detail.value);
-              }}"
-              @field-blur="${() => this.validationController.touchField(`blur-amount-${rule.id}`)}"
-            >
-            </ttg-input>
-            <ttg-input
-              id="animation-start-${rule.id}"
-              label="Начало анимации"
-              placeholder="0.6"
-              .value="${rule.animationStart.toString()}"
-              .error="${this.validationController.getFieldState(`animation-start-${rule.id}`)
+              id="animation-delay-${rule.id}"
+              label="Задержка между символами"
+              placeholder="0.05"
+              type="number"
+              min="0"
+              max="1"
+              step="0.01"
+              .value="${rule.animationDelay.toString()}"
+              .error="${this.validationController.getFieldState(`animation-delay-${rule.id}`)
                 ?.error ?? ''}"
-              tooltip="Начало анимации задаётся в процентах от высоты окна — это расстояние от верхнего края экрана до точки, где должна запуститься анимация (0.6 = 60% от высоты экрана)"
+              tooltip="Время паузы перед изменением цвета следующего символа. Рекомендуется 0.05"
               @update-value="${(e: CustomEvent) => {
-                const value = parseFloat(e.detail.value) || 0.6;
-                this.updateRule(rule.id, 'animationStart', Math.min(Math.max(value, 0), 1));
+                const value = parseFloat(e.detail.value) || 0.05;
+                this.updateRule(rule.id, 'animationDelay', Math.min(Math.max(value, 0), 1));
               }}"
               @field-blur="${() =>
-                this.validationController.touchField(`animation-start-${rule.id}`)}"
-            >
-            </ttg-input>
-            <ttg-input
-              id="animation-end-${rule.id}"
-              label="Конец анимации"
-              placeholder="0.4"
-              .value="${rule.animationEnd.toString()}"
-              .error="${this.validationController.getFieldState(`animation-end-${rule.id}`)
-                ?.error ?? ''}"
-              tooltip="Конец анимации задаётся в процентах от высоты окна — это расстояние от верхнего края экрана до точки, в которой анимация должна завершиться (0.4 = 40% от высоты экрана)"
-              @update-value="${(e: CustomEvent) => {
-                const value = parseFloat(e.detail.value) || 0.4;
-                this.updateRule(rule.id, 'animationEnd', Math.min(Math.max(value, 0), 1));
-              }}"
-              @field-blur="${() =>
-                this.validationController.touchField(`animation-end-${rule.id}`)}"
+                this.validationController.touchField(`animation-delay-${rule.id}`)}"
             >
             </ttg-input>
           </div>
+
+          <details class="advanced-settings">
+            <summary class="advanced-settings-toggle">Дополнительные настройки</summary>
+            <div class="advanced-settings-content">
+              <ttg-input
+                id="delay-before-start-${rule.id}"
+                label="Задержка перед началом"
+                placeholder="0s"
+                .value="${rule.delayBeforeStart}"
+                .error="${this.validationController.getFieldState(`delay-before-start-${rule.id}`)
+                  ?.error ?? ''}"
+                tooltip="Пауза перед запуском всей анимации"
+                @update-value="${(e: CustomEvent) => {
+                  this.updateRule(rule.id, 'delayBeforeStart', e.detail.value);
+                }}"
+                @field-blur="${() =>
+                  this.validationController.touchField(`delay-before-start-${rule.id}`)}"
+              >
+              </ttg-input>
+
+              <ttg-checkbox-group label="Эффекты замедления" orientation="vertical">
+                <ttg-checkbox-item
+                  label="Эффект замедления в середине"
+                  value="slowdownEffect"
+                  ?checked="${rule.slowdownEffect}"
+                  @change="${(e: CustomEvent) => {
+                    this.updateRule(rule.id, 'slowdownEffect', e.detail.checked);
+                  }}"
+                ></ttg-checkbox-item>
+                <ttg-checkbox-item
+                  label="Плавное затухание скорости анимации к концу текста"
+                  value="endSlowdownEffect"
+                  ?checked="${rule.endSlowdownEffect}"
+                  @change="${(e: CustomEvent) => {
+                    this.updateRule(rule.id, 'endSlowdownEffect', e.detail.checked);
+                  }}"
+                ></ttg-checkbox-item>
+              </ttg-checkbox-group>
+            </div>
+          </details>
         </div>
       </div>
     `;
   }
 
   // Валидация и сбор данных
-  protected collectData(): BlurTextScrollFormData | null {
+  protected collectData(): ColorTransitionFormData | null {
     // Используем ReactiveValidationController для валидации
     const formState = this.validationController.getFormState();
     if (!formState.isValid) {
       // Принудительная валидация для показа ошибок
       this.validationController.forceValidateForm();
       return null;
-    }
-
-    // Дополнительная валидация: начало анимации должно быть больше конца
-    for (const rule of this.config.rules) {
-      if (rule.animationStart <= rule.animationEnd) {
-        alert('Начало анимации должно быть больше конца анимации');
-        return null;
-      }
     }
 
     // Проверяем, что есть хотя бы одно правило
@@ -417,16 +483,16 @@ export default class BlurTextScrollGenerator extends BaseGenerator {
   }
 
   // Удаляем ID поля из конфигурации для генерации чистого объекта
-  private removeIdsFromConfig(config: BlurTextScrollConfig): CleanBlurTextScrollConfig {
+  private removeIdsFromConfig(config: ColorTransitionConfig): CleanColorTransitionConfig {
     return {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       rules: config.rules.map(({ id: _id, ...rest }) => rest),
     };
   }
 
-  protected generateCode(settings: BlurTextScrollFormData): string {
+  protected generateCode(settings: ColorTransitionFormData): string {
     // Parse back from serialized format
-    const config: BlurTextScrollConfig = {
+    const config: ColorTransitionConfig = {
       rules: JSON.parse(settings.rulesData || '[]'),
     };
 
@@ -436,62 +502,72 @@ export default class BlurTextScrollGenerator extends BaseGenerator {
     if (!cleanConfig.rules || cleanConfig.rules.length === 0) return '';
 
     // Генерируем стили для всех правил
-    const stylesParts = ['<style>', '  html,', '  body {', '    scroll-behavior: smooth;', '  }'];
+    const stylesParts = ['<style>'];
     const scriptsParts: string[] = [];
 
     cleanConfig.rules.forEach((rule, index) => {
-      const { animationSpeed, blurAmount, animationIdentifier, animationStart, animationEnd } =
-        rule;
+      const {
+        animationSpeed,
+        animationIdentifier,
+        colorFrom,
+        colorTo,
+        slowdownEffect,
+        endSlowdownEffect,
+        animationDelay,
+        delayBeforeStart,
+      } = rule;
 
       // CSS стили для правила
       const ruleStyles = [
-        `  /* Правило ${index + 1}: ${animationIdentifier} */`,
-        `  p[class*='${animationIdentifier}'],`,
-        `  div[class*='${animationIdentifier}'] {`,
-        `    visibility: hidden;`,
-        `    display: inline-block !important;`,
-        `  }`,
+        `  /* Правило ${index + 1}: ${animationIdentifier} */
+  .${animationIdentifier} {
+    visibility: hidden;  
+    display: inline-block !important;
+  }`,
       ];
 
       if (index === 0) {
-        ruleStyles.push(
-          '',
-          '  .space-char {',
-          '    display: inline-block;',
-          '    width: 0.27em;',
-          '  }',
-        );
+        ruleStyles.push(`  .space-char {
+    display: inline-block;
+    width: 0.27em;
+  }`);
       }
 
-      ruleStyles.push(
-        '',
-        `  .${animationIdentifier}-child {`,
-        `    transition: all ${animationSpeed} linear;`,
-        `  }`,
-      );
+      ruleStyles.push(`  @keyframes parent-${animationIdentifier} {
+    0% { opacity: 0; }
+    99% { opacity: 0; }
+    100% { opacity: 1; }
+  }
 
-      stylesParts.push(ruleStyles.join('\n'));
+  .${animationIdentifier}-child {
+    display: inline-block;
+    color: ${colorFrom};
+    animation: ${animationIdentifier} ${animationSpeed} forwards;
+    transition: all ${animationSpeed} linear;
+  }
+
+  @keyframes ${animationIdentifier} {
+    from { color: ${colorFrom}; }
+    to { color: ${colorTo}; }
+  }`);
+
+      stylesParts.push(ruleStyles.join('\n\n'));
 
       // JavaScript код для правила
-      scriptsParts.push(`    (function() {
-      // Правило ${index + 1}: ${animationIdentifier}
+      scriptsParts.push(`    // Правило ${index + 1}: ${animationIdentifier}
+    (function() {
       const animationSpeed = '${animationSpeed}';
-      const blurAmount = '${blurAmount}';
-      const inputAnimationIdentifier = '${animationIdentifier}';
-      const animationStart = ${animationStart};
-      const animationEnd = ${animationEnd};
+      const colorFrom = '${colorFrom}';
+      const colorTo = '${colorTo}';
+      const animationIdentifier = '${animationIdentifier}';
+      const slowdownEffect = ${slowdownEffect};
+      const endSlowdownEffect = ${endSlowdownEffect};
+      const inputAnimationDelay = ${animationDelay};
+      const delayBeforeStart = '${delayBeforeStart}';
 
-      const animationIdentifier = inputAnimationIdentifier;
-      const textElements = document.querySelectorAll('[class*="' + animationIdentifier + '"]');
-      const getChildClassName = (className) => {
-        const animationClassName = className.split(' ').find((cls) => cls === animationIdentifier);
-        if (!animationClassName) return '';
-        return animationClassName + '-child';
-      };
-
+      const textElements = document.querySelectorAll('.' + animationIdentifier);
       const originalTexts = new Map();
       const animatedElements = new Map();
-      const lastTopPositions = new Map();
 
       const observer = new IntersectionObserver(
         (entries) => {
@@ -504,15 +580,10 @@ export default class BlurTextScrollGenerator extends BaseGenerator {
             }
           });
         },
-        {
-          threshold: 0,
-        }
+        { threshold: 0.25 }
       );
 
       function animateElement(element) {
-        const className = element.className;
-        if (!className) return;
-
         if (!originalTexts.has(element)) {
           originalTexts.set(element, element.innerHTML.trim());
         }
@@ -520,14 +591,30 @@ export default class BlurTextScrollGenerator extends BaseGenerator {
         const originalContent = element.cloneNode(true);
         element.innerHTML = '';
 
-        createAndAnimateCharacters();
+        if (delayBeforeStart !== '0s') {
+          element.style.animation = 'parent-' + animationIdentifier + ' ' + delayBeforeStart + ' forwards';
+          element.addEventListener(
+            'animationend',
+            function () {
+              createAndAnimateCharacters();
+            },
+            { once: true }
+          );
+        } else {
+          createAndAnimateCharacters();
+        }
 
         function createAndAnimateCharacters() {
-          const childClassName = getChildClassName(className);
+          const childClassName = animationIdentifier + '-child';
+          const animationDalay = inputAnimationDelay;
+          let delay = 0;
 
-          const charElements = [];
-
-          const walker = document.createTreeWalker(originalContent, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, null, false);
+          const walker = document.createTreeWalker(
+            originalContent,
+            NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
+            null,
+            false
+          );
 
           const nodes = [];
           let node;
@@ -537,7 +624,6 @@ export default class BlurTextScrollGenerator extends BaseGenerator {
               if (nodes.length === 0) {
                 textContent = textContent.trimStart();
               }
-
               const chars = textContent.split('');
               chars.forEach((char) => nodes.push(char));
             } else if (node.tagName === 'BR') {
@@ -564,8 +650,26 @@ export default class BlurTextScrollGenerator extends BaseGenerator {
             const position = index / (nodes.length - 1 || 1);
             let totalSlowdownFactor = 0;
 
+            if (slowdownEffect) {
+              if (position < 0.33) {
+                // Обычная скорость в начале
+              } else if (position < 0.5) {
+                const normalizedPos = (position - 0.33) / (0.5 - 0.33);
+                totalSlowdownFactor += Math.pow(normalizedPos, 2) * 5;
+              } else if (position < 0.7) {
+                const normalizedPos = 1 - (position - 0.5) / (0.7 - 0.5);
+                totalSlowdownFactor += Math.pow(normalizedPos, 2) * 5;
+              }
+            }
+
+            if (endSlowdownEffect && position >= 0.6) {
+              const normalizedEndPos = (position - 0.6) / (1 - 0.6);
+              totalSlowdownFactor += Math.pow(normalizedEndPos, 2) * 3;
+            }
+
+            delay += animationDalay * (1 + totalSlowdownFactor);
+            charSpan.style.animationDelay = delay + 's';
             element.appendChild(charSpan);
-            charElements.push(charSpan);
           });
 
           requestAnimationFrame(() => {
@@ -574,52 +678,16 @@ export default class BlurTextScrollGenerator extends BaseGenerator {
         }
       }
 
-      function updateScrollAnimations() {
-        document.querySelectorAll('.' + animationIdentifier).forEach((paragraph, idx) => {
-          const chars = Array.from(paragraph.querySelectorAll('span'));
-          const rect = paragraph.getBoundingClientRect();
-          const windowHeight = window.innerHeight;
-
-          const start = windowHeight * animationStart;
-          const end = windowHeight * animationEnd;
-
-          if ((window.scrollY === 0 && rect.top >= 0) || rect.top > start) {
-            chars.forEach((char) => {
-              char.style.filter = 'blur(' + blurAmount + ')';
-            });
-            return;
-          }
-
-          if (rect.top + rect.height < end) {
-            chars.forEach((char) => {
-              char.style.filter = 'blur(0)';
-            });
-            return;
-          }
-
-          const progress = 1 - (rect.top - end) / (start - end);
-          chars.forEach((char, i) => {
-            const charProgress = i / chars.length;
-            char.style.filter = progress > charProgress ? 'blur(0)' : 'blur(' + blurAmount + ')';
-          });
-        });
-      }
-
-      window.addEventListener('scroll', updateScrollAnimations);
-      window.addEventListener('resize', updateScrollAnimations);
-      updateScrollAnimations();
-
       textElements.forEach((element) => {
         observer.observe(element);
       });
-      })();
-`);
+    })();`);
     });
 
     stylesParts.push('</style>');
 
-    const styles = stylesParts.join('\n');
-    const scripts = `<script type="module">
+    const styles = stylesParts.join('\n\n');
+    const scripts = `<script>
   document.addEventListener('DOMContentLoaded', () => {
 ${scriptsParts.join('\n\n')}
   });
