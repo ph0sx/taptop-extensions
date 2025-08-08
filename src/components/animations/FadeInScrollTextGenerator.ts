@@ -438,7 +438,8 @@ export default class FadeInScrollTextGenerator extends BaseGenerator {
       stylesParts.push(ruleStyles.join('\n'));
 
       // JavaScript код для правила
-      scriptsParts.push(`    // Правило ${index + 1}: ${animationIdentifier}
+      scriptsParts.push(`    (function() {
+      // Правило ${index + 1}: ${animationIdentifier}
       const animationSpeed = '${animationSpeed}';
       const inputAnimationIdentifier = '${animationIdentifier}';
       const animationStart = ${animationStart};
@@ -570,6 +571,7 @@ export default class FadeInScrollTextGenerator extends BaseGenerator {
       textElements.forEach((element) => {
         observer.observe(element);
       });
+      })();
 `);
     });
 

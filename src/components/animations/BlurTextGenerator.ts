@@ -499,11 +499,19 @@ export default class BlurTextGenerator extends BaseGenerator {
     filter: blur(${blurAmount});
     animation: ${animationIdentifier} ${animationSpeed} forwards;
     transition: all ${animationSpeed} linear;
+    will-change: filter;
+    transform: translateZ(0);
   }
   
   @keyframes ${animationIdentifier} {
-    from { filter: blur(${blurAmount}); }
-    to { filter: blur(0px); }
+    from { 
+      filter: blur(${blurAmount}); 
+      transform: translateZ(0);
+    }
+    to { 
+      filter: blur(0px); 
+      transform: translateZ(0);
+    }
   }`);
 
       // JavaScript код для правила
@@ -520,13 +528,24 @@ export default class BlurTextGenerator extends BaseGenerator {
     const originalTexts${index + 1} = new Map();
     const animatedElements${index + 1} = new Map();
 
+    // Throttling для IntersectionObserver
+    let observerTimeout${index + 1} = null;
     const observer${index + 1} = new IntersectionObserver(
       (entries) => {
+        if (observerTimeout${index + 1}) return;
+        
+        observerTimeout${index + 1} = setTimeout(() => {
+          observerTimeout${index + 1} = null;
+        }, 100); // Throttle на 100ms
+        
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             if (!animatedElements${index + 1}.get(entry.target)) {
-              animateElement${index + 1}(entry.target);
-              animatedElements${index + 1}.set(entry.target, true);
+              // Добавляем анимацию в очередь вместо немедленного запуска
+              animationQueue.add((onComplete) => {
+                animateElement${index + 1}(entry.target, onComplete);
+                animatedElements${index + 1}.set(entry.target, true);
+              });
             }
           }
         });
@@ -534,7 +553,7 @@ export default class BlurTextGenerator extends BaseGenerator {
       { threshold: 0.25 }
     );
 
-    function animateElement${index + 1}(element) {
+    function animateElement${index + 1}(element, onComplete) {
       if (!originalTexts${index + 1}.has(element)) {
         originalTexts${index + 1}.set(element, element.innerHTML.trim());
       }
@@ -548,18 +567,17 @@ export default class BlurTextGenerator extends BaseGenerator {
         element.addEventListener(
           'animationend',
           function () {
-            createAndAnimateCharacters${index + 1}();
+            createAndAnimateCharacters${index + 1}(onComplete);
           },
           { once: true }
         );
       } else {
-        createAndAnimateCharacters${index + 1}();
+        createAndAnimateCharacters${index + 1}(onComplete);
       }
 
-      function createAndAnimateCharacters${index + 1}() {
+      function createAndAnimateCharacters${index + 1}(onComplete) {
         const childClassName = animationIdentifier${index + 1} + '-child';
-        const animationDalay = inputAnimationDelay${index + 1};
-        let delay = 0;
+        const animationDelay = inputAnimationDelay${index + 1};
 
         const walker = document.createTreeWalker(
           originalContent,
@@ -576,7 +594,6 @@ export default class BlurTextGenerator extends BaseGenerator {
             if (nodes.length === 0) {
               textContent = textContent.trimStart();
             }
-
             const chars = textContent.split('');
             chars.forEach((char) => nodes.push(char));
           } else if (node.tagName === 'BR') {
@@ -584,49 +601,87 @@ export default class BlurTextGenerator extends BaseGenerator {
           }
         }
 
-        nodes.forEach((item, index) => {
-          if (item === 'BR') {
-            const brElement = document.createElement('br');
-            element.appendChild(brElement);
-            return;
+        // Предвычисляем delays для всех символов сразу
+        const delays = [];
+        let cumulativeDelay = 0;
+        
+        for (let i = 0; i < nodes.length; i++) {
+          if (nodes[i] === 'BR') {
+            delays.push(0);
+            continue;
           }
 
-          const charSpan = document.createElement('span');
-          charSpan.className = childClassName;
-
-          if (item === ' ') {
-            charSpan.classList.add('space-char');
-          }
-
-          charSpan.textContent = item;
-
-          const position = index / (nodes.length - 1 || 1);
+          const position = i / (nodes.length - 1 || 1);
           let totalSlowdownFactor = 0;
 
           if (slowdownEffect${index + 1}) {
-            if (position < 0.33) {
-            } else if (position < 0.5) {
+            if (position >= 0.33 && position < 0.5) {
               const normalizedPos = (position - 0.33) / (0.5 - 0.33);
-              totalSlowdownFactor += Math.pow(normalizedPos, 2) * 5;
-            } else if (position < 0.7) {
+              totalSlowdownFactor += normalizedPos * normalizedPos * 5;
+            } else if (position >= 0.5 && position < 0.7) {
               const normalizedPos = 1 - (position - 0.5) / (0.7 - 0.5);
-              totalSlowdownFactor += Math.pow(normalizedPos, 2) * 5;
+              totalSlowdownFactor += normalizedPos * normalizedPos * 5;
             }
           }
 
           if (endSlowdownEffect${index + 1} && position >= 0.6) {
             const normalizedEndPos = (position - 0.6) / (1 - 0.6);
-            totalSlowdownFactor += Math.pow(normalizedEndPos, 2) * 3;
+            totalSlowdownFactor += normalizedEndPos * normalizedEndPos * 3;
           }
 
-          delay += animationDalay * (1 + totalSlowdownFactor);
-          charSpan.style.animationDelay = delay + 's';
-          element.appendChild(charSpan);
-        });
+          cumulativeDelay += animationDelay * (1 + totalSlowdownFactor);
+          delays.push(cumulativeDelay);
+        }
 
-        requestAnimationFrame(() => {
-          element.style.visibility = 'visible';
-        });
+        // Создаем DocumentFragment для batch DOM операций
+        const fragment = document.createDocumentFragment();
+        
+        // Асинхронное создание DOM элементов
+        const createNodesAsync = (startIndex = 0) => {
+          const BATCH_SIZE = 20; // Обрабатываем по 20 символов за раз
+          const endIndex = Math.min(startIndex + BATCH_SIZE, nodes.length);
+
+          for (let i = startIndex; i < endIndex; i++) {
+            const item = nodes[i];
+            
+            if (item === 'BR') {
+              const brElement = document.createElement('br');
+              fragment.appendChild(brElement);
+              continue;
+            }
+
+            const charSpan = document.createElement('span');
+            charSpan.className = childClassName;
+            charSpan.style.willChange = 'filter';
+
+            if (item === ' ') {
+              charSpan.classList.add('space-char');
+            }
+
+            charSpan.textContent = item;
+            charSpan.style.animationDelay = delays[i] + 's';
+            fragment.appendChild(charSpan);
+          }
+
+          element.appendChild(fragment.cloneNode(true));
+          
+          // Очищаем fragment для следующей итерации
+          while (fragment.firstChild) {
+            fragment.removeChild(fragment.firstChild);
+          }
+
+          if (endIndex < nodes.length) {
+            requestAnimationFrame(() => createNodesAsync(endIndex));
+          } else {
+            requestAnimationFrame(() => {
+              element.style.visibility = 'visible';
+              // Уведомляем очередь о завершении анимации
+              if (onComplete) onComplete();
+            });
+          }
+        };
+
+        createNodesAsync();
       }
     }
 
@@ -640,6 +695,36 @@ export default class BlurTextGenerator extends BaseGenerator {
     const styles = stylesParts.join('\n');
     const scripts = `<script type="module">
   document.addEventListener('DOMContentLoaded', () => {
+    // Глобальная очередь анимаций для предотвращения перегрузки
+    const animationQueue = {
+      active: 0,
+      maxConcurrent: 3,
+      pending: [],
+      
+      add(animationFn) {
+        if (this.active < this.maxConcurrent) {
+          this.active++;
+          animationFn(() => {
+            this.active--;
+            this.processNext();
+          });
+        } else {
+          this.pending.push(animationFn);
+        }
+      },
+      
+      processNext() {
+        if (this.pending.length > 0 && this.active < this.maxConcurrent) {
+          const nextAnimation = this.pending.shift();
+          this.active++;
+          nextAnimation(() => {
+            this.active--;
+            this.processNext();
+          });
+        }
+      }
+    };
+
 ${scriptsParts.join('\n\n')}
   });
 </script>`;
