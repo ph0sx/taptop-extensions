@@ -1,0 +1,208 @@
+/* COMMON WRAPPER */
+.ttg-color-picker-wrapper {
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ======== LABEL ============ */
+
+/* LABEL GROUP */
+.ttg-color-picker-wrapper label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--grey-900, #666);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: -0.28px;
+}
+
+/* REQUIRED ICON */
+.ttg-color-picker-required {
+  color: var(--red, #ff2b71);
+}
+
+/* ======== COLOR PICKER FIELD ============ */
+
+/* COLOR PICKER FIELD GROUP */
+.ttg-color-picker-field {
+  position: relative;
+  max-height: 52px;
+  padding: 16px 12px 16px 16px;
+  border-radius: 10px;
+  background: var(--grey-100, #f5f5f5);
+  border: 1px solid transparent;
+  transition: border-color 0.3s ease;
+  color: var(--grey-900, #666);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* COLOR SWATCH */
+.ttg-color-picker-swatch {
+  width: 20px;
+  height: 20px;
+  aspect-ratio: 1/1;
+  border-radius: 4px;
+  border: 1px solid var(--grey-300, #d5d5d5);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.2s ease;
+}
+
+/* HEX INPUT */
+.ttg-color-picker-hex-input {
+  outline: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  flex: 1;
+  height: 20px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: -0.28px;
+  color: inherit;
+  text-transform: uppercase;
+  font-family: 'Courier New', Courier, monospace;
+
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* HEX INPUT PLACEHOLDER */
+.ttg-color-picker-hex-input::placeholder {
+  color: var(--grey-500, #a9a9a9);
+  text-transform: uppercase;
+}
+
+/* OPACITY DISPLAY */
+.ttg-color-picker-opacity {
+  color: var(--grey-700, #888888);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: -0.28px;
+  flex-shrink: 0;
+  min-width: 35px;
+  text-align: right;
+}
+
+/* ======== ERROR ============ */
+
+/* ERROR GROUP */
+.ttg-color-picker-error {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ERROR TEXT */
+.ttg-color-picker-error-text {
+  color: var(--critical, #ff2b71);
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: -0.28px;
+}
+
+/* ======== STATE ============ */
+
+/* 1. hover */
+.ttg-color-picker-field:hover {
+  border: 1px solid var(--grey-300, #d5d5d5);
+}
+
+.ttg-color-picker-field:hover .ttg-color-picker-swatch {
+  border-color: var(--black, #333);
+}
+
+/* 2. focus */
+.ttg-color-picker-field:focus-within {
+  border: 1px solid var(--black, #333);
+  color: var(--black, #333) !important;
+}
+
+.ttg-color-picker-field:focus-within .ttg-color-picker-swatch {
+  border-color: var(--black, #333);
+}
+
+/* 3. disabled */
+.ttg-color-picker-wrapper.disabled .ttg-color-picker-field {
+  background: var(--grey-100, #f5f5f5);
+  color: var(--grey-500, #a9a9a9);
+  cursor: not-allowed;
+}
+
+.ttg-color-picker-wrapper.disabled .ttg-color-picker-swatch {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.ttg-color-picker-wrapper.disabled .ttg-color-picker-hex-input {
+  cursor: not-allowed;
+  color: var(--grey-500, #a9a9a9);
+}
+
+.ttg-color-picker-wrapper.disabled .ttg-color-picker-opacity {
+  color: var(--grey-500, #a9a9a9);
+}
+
+.ttg-color-picker-wrapper.disabled label {
+  color: var(--grey-500, #a9a9a9);
+}
+
+/* 4. error */
+.ttg-color-picker-wrapper.error .ttg-color-picker-field {
+  border: 1px solid var(--critical, #ff2b71);
+}
+
+.ttg-color-picker-wrapper.error .ttg-color-picker-swatch {
+  border-color: var(--critical, #ff2b71);
+}
+
+/* Скрываем блок ошибки по умолчанию */
+.ttg-color-picker-error {
+  display: none;
+  gap: 4px;
+}
+
+/* Показываем блок ошибки при наличии класса error */
+.ttg-color-picker-wrapper.error .ttg-color-picker-error {
+  display: flex;
+}
+
+/* ======== PICKR INTEGRATION ============ */
+
+/* Override pickr button styles to match our swatch */
+.pcr-button {
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--grey-300, #d5d5d5) !important;
+  box-shadow: none !important;
+}
+
+/* Hide pickr's default border and shadow when active */
+.pcr-button.pcr-active {
+  box-shadow: none !important;
+  border-color: var(--black, #333) !important;
+}
+
+/* Ensure pickr app positioning */
+.pcr-app {
+  z-index: 1000;
+}
+
+/* Make sure pickr color representation matches our swatch */
+.pcr-button::before {
+  border-radius: 3px !important;
+}
+
+.picker-container {
+  position: absolute;
+}
