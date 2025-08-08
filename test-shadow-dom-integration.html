@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ColorPicker Shadow DOM Integration Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+
+      .container {
+        max-width: 1000px;
+        margin: 0 auto;
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        color: #333;
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      .test-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+        border-left: 4px solid #007bff;
+      }
+
+      .status-box {
+        padding: 15px;
+        border-radius: 6px;
+        margin: 10px 0;
+        font-weight: bold;
+      }
+
+      .success {
+        background: #d4edda;
+        color: #155724;
+        border-left: 4px solid #28a745;
+      }
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+        border-left: 4px solid #dc3545;
+      }
+      .warning {
+        background: #fff3cd;
+        color: #856404;
+        border-left: 4px solid #ffc107;
+      }
+      .info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border-left: 4px solid #17a2b8;
+      }
+
+      .test-controls {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin: 15px 0;
+      }
+
+      button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+
+      button:hover {
+        background: #0056b3;
+      }
+      button:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+      }
+
+      .test-results {
+        background: white;
+        border: 1px solid #ddd;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 10px 0;
+        font-family: monospace;
+        font-size: 12px;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .generator-wrapper {
+        background: white;
+        padding: 20px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        margin: 20px 0;
+      }
+
+      .live-test {
+        background: #e8f4fd;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎨 ColorPicker Shadow DOM Integration Test</h1>
+
+      <div class="test-section">
+        <h3>🔍 Integration Status</h3>
+        <div id="integration-status">
+          <div class="info">⏳ Initializing Shadow DOM integration test...</div>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h3>🧪 Test Controls</h3>
+        <div class="test-controls">
+          <button onclick="runShadowDOMTest()">Test Shadow DOM Integration</button>
+          <button onclick="testPickrInitialization()">Test Pickr Initialization</button>
+          <button onclick="testColorSelection()">Test Color Selection</button>
+          <button onclick="testManualInput()">Test Manual HEX Input</button>
+          <button onclick="clearResults()">Clear Results</button>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h3>📋 Test Results</h3>
+        <div id="test-results" class="test-results">Ready for testing...</div>
+      </div>
+
+      <div class="live-test">
+        <h3>🎯 Live Color Picker Test</h3>
+        <p>
+          Try interacting with the color picker below. The palette should open within the
+          component's Shadow DOM:
+        </p>
+
+        <div class="generator-wrapper">
+          <color-transition-text-generator></color-transition-text-generator>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="./dist/color-transition-text-generator.js"></script>
+
+    <script>
+      let testResults = [];
+      let generator = null;
+      let colorPickers = [];
+
+      function log(message, type = 'info') {
+        const timestamp = new Date().toLocaleTimeString();
+        testResults.push(`[${timestamp}] ${type.toUpperCase()}: ${message}`);
+        updateTestResults();
+
+        // Also log to console for debugging
+        console.log(`[${type.toUpperCase()}]`, message);
+      }
+
+      function updateTestResults() {
+        const resultsDiv = document.getElementById('test-results');
+        resultsDiv.innerHTML = testResults.join('\n');
+        resultsDiv.scrollTop = resultsDiv.scrollHeight;
+      }
+
+      function clearResults() {
+        testResults = [];
+        updateTestResults();
+        document.getElementById('integration-status').innerHTML =
+          '<div class="info">📋 Results cleared. Ready for new tests.</div>';
+      }
+
+      function updateStatus(message, type = 'info') {
+        const statusDiv = document.getElementById('integration-status');
+        const className =
+          type === 'success'
+            ? 'success'
+            : type === 'error'
+              ? 'error'
+              : type === 'warning'
+                ? 'warning'
+                : 'info';
+        statusDiv.innerHTML = `<div class="${className}">${message}</div>`;
+      }
+
+      async function runShadowDOMTest() {
+        log('Starting Shadow DOM integration test...');
+
+        try {
+          // 1. Find generator component
+          generator = document.querySelector('color-transition-text-generator');
+          if (!generator) {
+            throw new Error('ColorTransitionTextGenerator not found');
+          }
+          log('✅ Generator component found');
+
+          // 2. Wait for component to initialize
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          // 3. Find color pickers in generator's shadow DOM
+          colorPickers = generator.shadowRoot?.querySelectorAll('ttg-color-picker') || [];
+          log(`✅ Found ${colorPickers.length} color picker components`);
+
+          if (colorPickers.length === 0) {
+            throw new Error('No color picker components found');
+          }
+
+          // 4. Test each color picker's Shadow DOM structure
+          let shadowDOMTestsPassed = 0;
+          for (let i = 0; i < colorPickers.length; i++) {
+            const picker = colorPickers[i];
+            log(`Testing ColorPicker ${i + 1}...`);
+
+            // Check Shadow DOM exists
+            if (!picker.shadowRoot) {
+              log(`❌ ColorPicker ${i + 1}: No Shadow DOM found`, 'error');
+              continue;
+            }
+
+            // Check for swatch element
+            const swatch = picker.shadowRoot.querySelector('.ttg-color-picker-swatch');
+            if (!swatch) {
+              log(`❌ ColorPicker ${i + 1}: Swatch element not found`, 'error');
+              continue;
+            }
+
+            // Check for picker container
+            const container = picker.shadowRoot.querySelector('.picker-container');
+            if (!container) {
+              log(`❌ ColorPicker ${i + 1}: Picker container not found`, 'error');
+              continue;
+            }
+
+            // Check for HEX input
+            const hexInput = picker.shadowRoot.querySelector('.ttg-color-picker-hex-input');
+            if (!hexInput) {
+              log(`❌ ColorPicker ${i + 1}: HEX input not found`, 'error');
+              continue;
+            }
+
+            log(`✅ ColorPicker ${i + 1}: Shadow DOM structure is correct`);
+            shadowDOMTestsPassed++;
+          }
+
+          if (shadowDOMTestsPassed === colorPickers.length) {
+            updateStatus(
+              '🎉 SUCCESS: All ColorPicker components have correct Shadow DOM structure!',
+              'success',
+            );
+            log('✅ Shadow DOM integration test PASSED');
+          } else {
+            updateStatus(
+              `⚠️ PARTIAL: ${shadowDOMTestsPassed}/${colorPickers.length} ColorPickers passed Shadow DOM test`,
+              'warning',
+            );
+            log(
+              `⚠️ Shadow DOM test partially passed: ${shadowDOMTestsPassed}/${colorPickers.length}`,
+              'warning',
+            );
+          }
+        } catch (error) {
+          updateStatus(`❌ ERROR: ${error.message}`, 'error');
+          log(`❌ Shadow DOM test failed: ${error.message}`, 'error');
+        }
+      }
+
+      async function testPickrInitialization() {
+        log('Testing Pickr initialization...');
+
+        if (colorPickers.length === 0) {
+          log('❌ No color pickers available. Run Shadow DOM test first.', 'error');
+          return;
+        }
+
+        try {
+          let pickrInitialized = 0;
+
+          for (let i = 0; i < colorPickers.length; i++) {
+            const picker = colorPickers[i];
+
+            // Wait a bit for Pickr to initialize
+            await new Promise((resolve) => setTimeout(resolve, 500));
+
+            // Check if Pickr palette elements are present
+            const pickrElements = picker.shadowRoot?.querySelectorAll(
+              '.pcr-app, .pickr, [class*="pcr"]',
+            );
+
+            if (pickrElements && pickrElements.length > 0) {
+              log(
+                `✅ ColorPicker ${i + 1}: Pickr elements found (${pickrElements.length} elements)`,
+              );
+              pickrInitialized++;
+            } else {
+              log(`⚠️ ColorPicker ${i + 1}: No Pickr elements found yet`, 'warning');
+            }
+          }
+
+          if (pickrInitialized > 0) {
+            updateStatus(
+              `🎨 Pickr initialized in ${pickrInitialized}/${colorPickers.length} ColorPickers`,
+              'success',
+            );
+          } else {
+            updateStatus('⚠️ No Pickr elements found in any ColorPicker', 'warning');
+          }
+        } catch (error) {
+          log(`❌ Pickr initialization test failed: ${error.message}`, 'error');
+        }
+      }
+
+      async function testColorSelection() {
+        log('Testing color selection functionality...');
+
+        if (colorPickers.length === 0) {
+          log('❌ No color pickers available. Run Shadow DOM test first.', 'error');
+          return;
+        }
+
+        try {
+          const picker = colorPickers[0]; // Test first picker
+          const swatch = picker.shadowRoot?.querySelector('.ttg-color-picker-swatch');
+
+          if (!swatch) {
+            throw new Error('Swatch element not found in first ColorPicker');
+          }
+
+          log('Attempting to click on color swatch...');
+
+          // Simulate click on swatch
+          swatch.click();
+
+          // Wait for Pickr to possibly open
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          // Check if Pickr app appeared
+          const pickrApp = picker.shadowRoot?.querySelector('.pcr-app');
+          if (pickrApp) {
+            log('✅ Pickr palette appeared after swatch click');
+            updateStatus(
+              '🎯 Color selection test PASSED: Swatch click opens Pickr palette',
+              'success',
+            );
+          } else {
+            log('⚠️ Pickr palette did not appear after swatch click', 'warning');
+            updateStatus(
+              '⚠️ Color selection test: Swatch click did not open Pickr palette',
+              'warning',
+            );
+          }
+        } catch (error) {
+          log(`❌ Color selection test failed: ${error.message}`, 'error');
+          updateStatus(`❌ Color selection test failed: ${error.message}`, 'error');
+        }
+      }
+
+      async function testManualInput() {
+        log('Testing manual HEX input...');
+
+        if (colorPickers.length === 0) {
+          log('❌ No color pickers available. Run Shadow DOM test first.', 'error');
+          return;
+        }
+
+        try {
+          const picker = colorPickers[0]; // Test first picker
+          const hexInput = picker.shadowRoot?.querySelector('.ttg-color-picker-hex-input');
+
+          if (!hexInput) {
+            throw new Error('HEX input not found in first ColorPicker');
+          }
+
+          log('Testing manual HEX input with value "FF5722"...');
+
+          // Simulate input
+          hexInput.value = 'FF5722';
+          hexInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+          // Wait for processing
+          await new Promise((resolve) => setTimeout(resolve, 500));
+
+          // Check if the input value was processed
+          if (hexInput.value === 'FF5722') {
+            log('✅ Manual HEX input accepted');
+
+            // Check if swatch color updated
+            const swatch = picker.shadowRoot?.querySelector('.ttg-color-picker-swatch');
+            if (swatch) {
+              const swatchStyle = window.getComputedStyle(swatch);
+              log(`Swatch background color: ${swatchStyle.backgroundColor}`);
+            }
+
+            updateStatus('📝 Manual input test PASSED: HEX input accepted', 'success');
+          } else {
+            log(`⚠️ HEX input value changed to: ${hexInput.value}`, 'warning');
+            updateStatus('⚠️ Manual input test: HEX input value was modified', 'warning');
+          }
+        } catch (error) {
+          log(`❌ Manual input test failed: ${error.message}`, 'error');
+          updateStatus(`❌ Manual input test failed: ${error.message}`, 'error');
+        }
+      }
+
+      // Monitor for errors
+      window.addEventListener('error', (e) => {
+        log(`❌ JavaScript Error: ${e.message}`, 'error');
+      });
+
+      // Auto-run tests when page loads
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(async () => {
+          log('Page loaded, starting automatic tests...');
+          await runShadowDOMTest();
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await testPickrInitialization();
+        }, 2000);
+      });
+    </script>
+  </body>
+</html>

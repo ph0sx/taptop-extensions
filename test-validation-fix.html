@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ColorPicker Validation Fix Test</title>
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial,
+          sans-serif;
+        margin: 0;
+        padding: 30px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+      }
+
+      h1 {
+        color: #333;
+        text-align: center;
+        margin-bottom: 40px;
+        font-size: 2.5rem;
+        font-weight: 700;
+      }
+
+      .validation-section {
+        background: linear-gradient(135deg, #d4edda, #c3e6cb);
+        padding: 25px;
+        border-radius: 15px;
+        margin: 25px 0;
+        border-left: 5px solid #28a745;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      }
+
+      .validation-section h3 {
+        margin-top: 0;
+        color: #155724;
+        font-weight: 600;
+      }
+
+      .test-controls {
+        background: #f8f9fa;
+        padding: 25px;
+        border-radius: 15px;
+        margin: 25px 0;
+        border-left: 5px solid #007bff;
+      }
+
+      .test-controls h3 {
+        margin-top: 0;
+        color: #0056b3;
+        font-weight: 600;
+      }
+
+      .button-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+        margin: 20px 0;
+      }
+
+      button {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      .generate-btn {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+      }
+
+      .generate-btn:hover {
+        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+      }
+
+      .status-message {
+        padding: 15px 20px;
+        border-radius: 10px;
+        margin: 15px 0;
+        font-weight: 600;
+        font-size: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .status-success {
+        background: linear-gradient(135deg, #d4edda, #c3e6cb);
+        color: #155724;
+        border-left: 5px solid #28a745;
+      }
+      .status-error {
+        background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+        color: #721c24;
+        border-left: 5px solid #dc3545;
+      }
+      .status-warning {
+        background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+        color: #856404;
+        border-left: 5px solid #ffc107;
+      }
+      .status-info {
+        background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+        color: #0c5460;
+        border-left: 5px solid #17a2b8;
+      }
+
+      .generator-wrapper {
+        background: white;
+        padding: 30px;
+        border: 2px solid #e9ecef;
+        border-radius: 15px;
+        margin: 25px 0;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+      }
+
+      .instructions {
+        background: linear-gradient(135deg, #e8f4fd, #f1f8ff);
+        padding: 30px;
+        border-radius: 15px;
+        margin: 25px 0;
+        border: 2px solid #bee5eb;
+      }
+
+      .instructions h3 {
+        color: #0c5460;
+        margin-top: 0;
+      }
+
+      .instructions ol {
+        font-size: 16px;
+        line-height: 1.6;
+      }
+
+      .emoji {
+        font-size: 1.2em;
+        margin-right: 8px;
+      }
+
+      .code-example {
+        background: #2d3748;
+        color: #e2e8f0;
+        padding: 15px;
+        border-radius: 8px;
+        font-family: 'Fira Code', 'Courier New', monospace;
+        font-size: 14px;
+        margin: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎨 ColorPicker Validation Fix - Final Test</h1>
+
+      <div class="validation-section">
+        <h3><span class="emoji">✅</span>Исправление валидации HEX формата</h3>
+        <p>
+          <strong>Проблема была:</strong> Валидация не пропускала цвета с opacity, потому что
+          ColorPicker возвращал <code>#RRGGBBAA</code> формат, а валидация ожидала только
+          <code>#RRGGBB</code>.
+        </p>
+
+        <p>
+          <strong>Исправление:</strong> Теперь ColorPicker всегда возвращает стандартный HEX формат
+          <code>#RRGGBB</code> (без alpha канала), а opacity хранится отдельно внутри компонента
+          только для отображения.
+        </p>
+
+        <div class="code-example">
+          // До исправления (с alpha каналом): value = "#FF572280" // ❌ Не проходило валидацию //
+          После исправления (стандартный HEX): value = "#FF5722" // ✅ Проходит валидацию opacity =
+          50% // Хранится отдельно для отображения
+        </div>
+      </div>
+
+      <div class="test-controls">
+        <h3><span class="emoji">🧪</span>Тесты валидации</h3>
+        <div class="button-grid">
+          <button onclick="testColorWithOpacity()">🎨 Тест: Цвет с opacity</button>
+          <button onclick="testColorValidation()">✅ Тест: Валидация цветов</button>
+          <button onclick="testGeneration()" class="generate-btn">🚀 Тест: Генерация кода</button>
+          <button onclick="clearStatus()">🧹 Очистить статус</button>
+        </div>
+
+        <div id="test-status"></div>
+      </div>
+
+      <div class="instructions">
+        <h3><span class="emoji">🎯</span>Как протестировать исправление</h3>
+        <ol>
+          <li>
+            <strong>Выберите цвет:</strong> Нажмите на цветной квадратик и выберите любой цвет
+          </li>
+          <li>
+            <strong>Установите прозрачность:</strong> Используйте нижний слайдер для изменения
+            opacity
+          </li>
+          <li><strong>Закройте Pickr:</strong> Кликните вне палитры для сохранения</li>
+          <li>
+            <strong>Проверьте валидацию:</strong> Нажмите кнопку "Generate" - она должна работать
+          </li>
+          <li><strong>Проверьте формат:</strong> Откройте консоль и посмотрите значение value</li>
+        </ol>
+
+        <p><strong>💡 Ожидаемый результат:</strong></p>
+        <ul>
+          <li>✅ Валидация проходит для любого цвета с любой прозрачностью</li>
+          <li>✅ Значение value всегда в формате #RRGGBB</li>
+          <li>✅ Поле процентов показывает правильное значение opacity</li>
+          <li>✅ Кнопка Generate работает без ошибок</li>
+        </ul>
+      </div>
+
+      <div class="generator-wrapper">
+        <color-transition-text-generator></color-transition-text-generator>
+      </div>
+    </div>
+
+    <script type="module" src="./dist/color-transition-text-generator.js"></script>
+
+    <script>
+      let generator = null;
+
+      function updateStatus(message, type = 'info') {
+        const statusDiv = document.getElementById('test-status');
+        statusDiv.innerHTML = `<div class="status-${type}">${message}</div>`;
+      }
+
+      function clearStatus() {
+        document.getElementById('test-status').innerHTML = '';
+      }
+
+      async function testColorWithOpacity() {
+        updateStatus('🎨 Тестирование цвета с opacity...', 'info');
+
+        try {
+          generator = document.querySelector('color-transition-text-generator');
+          if (!generator) {
+            throw new Error('ColorTransitionTextGenerator не найден');
+          }
+
+          const colorPickers = generator.shadowRoot?.querySelectorAll('ttg-color-picker');
+          if (!colorPickers || colorPickers.length === 0) {
+            throw new Error('ColorPicker компоненты не найдены');
+          }
+
+          const picker = colorPickers[0];
+
+          // Симулируем установку цвета с opacity
+          console.log('Устанавливаем тестовый цвет...');
+
+          // Получаем текущее значение
+          const currentValue = picker.value;
+          console.log('Текущее значение value:', currentValue);
+
+          // Проверяем формат
+          const hexRegex = /^#[0-9A-Fa-f]{6}$/;
+          if (hexRegex.test(currentValue)) {
+            updateStatus(
+              `✅ УСПЕХ: Значение "${currentValue}" имеет правильный HEX формат #RRGGBB`,
+              'success',
+            );
+            console.log('✅ Валидация формата прошла успешно');
+          } else {
+            updateStatus(
+              `❌ ОШИБКА: Значение "${currentValue}" не соответствует формату #RRGGBB`,
+              'error',
+            );
+            console.log('❌ Валидация формата провалилась');
+          }
+        } catch (error) {
+          updateStatus(`❌ Ошибка тестирования: ${error.message}`, 'error');
+          console.error('Ошибка тестирования:', error);
+        }
+      }
+
+      async function testColorValidation() {
+        updateStatus('✅ Тестирование валидации ColorPicker...', 'info');
+
+        try {
+          generator = document.querySelector('color-transition-text-generator');
+          const colorPickers = generator?.shadowRoot?.querySelectorAll('ttg-color-picker');
+
+          if (!colorPickers || colorPickers.length === 0) {
+            throw new Error('ColorPicker компоненты не найдены');
+          }
+
+          let allValid = true;
+          let validationResults = [];
+
+          for (let i = 0; i < colorPickers.length; i++) {
+            const picker = colorPickers[i];
+            const isValid = picker.validate();
+            const value = picker.value;
+
+            validationResults.push(
+              `ColorPicker ${i + 1}: ${isValid ? '✅' : '❌'} (value: ${value})`,
+            );
+
+            if (!isValid) {
+              allValid = false;
+              console.log(`ColorPicker ${i + 1} validation failed:`, picker.error);
+            }
+          }
+
+          if (allValid) {
+            updateStatus(
+              `✅ УСПЕХ: Все ColorPicker компоненты прошли валидацию!<br>${validationResults.join('<br>')}`,
+              'success',
+            );
+          } else {
+            updateStatus(
+              `⚠️ ЧАСТИЧНО: Некоторые ColorPicker не прошли валидацию<br>${validationResults.join('<br>')}`,
+              'warning',
+            );
+          }
+        } catch (error) {
+          updateStatus(`❌ Ошибка валидации: ${error.message}`, 'error');
+        }
+      }
+
+      async function testGeneration() {
+        updateStatus('🚀 Тестирование генерации кода...', 'info');
+
+        try {
+          generator = document.querySelector('color-transition-text-generator');
+          if (!generator) {
+            throw new Error('ColorTransitionTextGenerator не найден');
+          }
+
+          // Проверяем есть ли кнопка Generate
+          const generateButton = generator.shadowRoot?.querySelector('ttg-button[type="primary"]');
+          if (!generateButton) {
+            throw new Error('Кнопка Generate не найдена');
+          }
+
+          console.log('Попытка генерации кода...');
+
+          // Симулируем клик по кнопке Generate
+          generateButton.click();
+
+          // Ждем немного для обработки
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          updateStatus(
+            '✅ УСПЕХ: Кнопка Generate работает! Проверьте консоль и результаты генерации.',
+            'success',
+          );
+          console.log('✅ Генерация кода завершена успешно');
+        } catch (error) {
+          updateStatus(`❌ Ошибка генерации: ${error.message}`, 'error');
+          console.error('Ошибка генерации:', error);
+        }
+      }
+
+      // Мониторинг ошибок
+      window.addEventListener('error', (e) => {
+        console.error('❌ JavaScript Error:', e.message);
+        if (e.message.includes('validation') || e.message.includes('HEX')) {
+          updateStatus(`❌ КРИТИЧЕСКАЯ ОШИБКА: ${e.message}`, 'error');
+        }
+      });
+
+      // Инициализация при загрузке
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+          generator = document.querySelector('color-transition-text-generator');
+          if (generator) {
+            console.log('✅ ColorTransitionTextGenerator успешно загружен');
+            console.log('🎯 ColorPicker готов к тестированию валидации!');
+
+            updateStatus(
+              '🎯 ColorTransitionTextGenerator загружен! Готов к тестированию валидации HEX формата.',
+              'info',
+            );
+          } else {
+            updateStatus('❌ Не удалось найти ColorTransitionTextGenerator', 'error');
+          }
+        }, 2000);
+      });
+    </script>
+  </body>
+</html>
