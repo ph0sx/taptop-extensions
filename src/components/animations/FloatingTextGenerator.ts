@@ -591,7 +591,8 @@ export default class FloatingTextGenerator extends BaseGenerator {
   }`);
 
       // JavaScript код для правила
-      scriptsParts.push(`    // Правило ${index + 1}: ${animationIdentifier}
+      scriptsParts.push(`    (function() {
+      // Правило ${index + 1}: ${animationIdentifier}
       const animationSpeed = '${animationSpeed}';
       const opacityForDouble = ${opacityForDouble};
       const textHeight = '${textHeight}';
@@ -737,6 +738,7 @@ export default class FloatingTextGenerator extends BaseGenerator {
       textElements.forEach((element) => {
         observer.observe(element);
       });
+      })();
 `);
     });
 

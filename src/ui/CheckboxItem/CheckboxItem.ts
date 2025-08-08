@@ -36,6 +36,7 @@ export class CheckboxItem extends LitElement {
             .value="${this.value}"
             .disabled="${this.disabled}"
             .name="${this.name}"
+            tabindex="-1"
             @change="${this.handleChange}"
           />
           <div class="ttg-checkbox-icon"></div>
