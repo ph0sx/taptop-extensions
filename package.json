@@ -2,6 +2,10 @@
   "name": "taptop-extensions",
   "description": "",
   "version": "0.1.0",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fforzamax/taptop-extensions.git"
@@ -14,7 +18,9 @@
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
     "@eslint/js": "^9.28.0",
+    "@rollup/plugin-commonjs": "^28.0.6",
     "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-replace": "^6.0.2",
     "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^12.1.3",
     "@typescript-eslint/eslint-plugin": "^8.33.1",
@@ -44,12 +50,17 @@
     "format": "prettier --write .",
     "build": "rollup -c"
   },
+  "files": [
+    "dist/"
+  ],
   "lint-staged": {
     "*.{ts,js}": [
       "eslint --cache --fix"
     ]
   },
   "dependencies": {
+    "@simonwep/pickr": "^1.9.1",
+    "immer": "^10.1.1",
     "lit": "^3.3.1"
   }
 }
